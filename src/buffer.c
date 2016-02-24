@@ -30,6 +30,7 @@ Buffer_t *buf_new()
 
 	b = malloc(sizeof(Buffer_t));
 	b->filename = "scratch.txt";
+	b->c_pos = 0;
 
 	bc = buf_chunk_new(b);
 	buf_chunk_add(b, bc);
@@ -183,6 +184,13 @@ int buf_save_file(Buffer_t *b, const char *filename)
 
 		bc = bc->next;
 	}
+
+	return 0;
+}
+
+int buf_set_cursor(Buffer_t *b, int n)
+{
+	b->c_pos = n;
 
 	return 0;
 }

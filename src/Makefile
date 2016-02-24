@@ -16,6 +16,7 @@ sources = \
 	input.c \
 	input_cmd.c \
 	buffer.c \
+	list.c \
 
 OBJS = $(sources:%.c=$(obj_dir)%.o)
 deps = $(sources:%.c=$(deps_dir)%.d)

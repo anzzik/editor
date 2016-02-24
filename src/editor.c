@@ -18,6 +18,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <ctype.h>
+
 #include "editor.h"
 #include "input_cmd.h"
 
@@ -28,12 +31,25 @@ Context_t *ed_new()
 	return c;
 }
 
+int ed_cmd_cmp(void *a, void *b)
+{
+	Cmd_t *aa, *bb;
+
+	aa = a;
+	bb = b;
+
+	return strcmp(aa->cmd_id, bb->cmd_id);
+}
+
 int ed_init(Context_t* ctx)
 {
 	InputLib_t il;
 
 	/* main context */
 	ed_set_mode(ctx, CMD_MODE);
+	ctx->cmd_list = ls_new(ed_cmd_cmp);
+
+	ed_load_cmd_cfg(ctx, "cmds.txt");
 	
 	/* screen */
 	ctx->scr = ncs_new();
@@ -48,6 +64,148 @@ int ed_init(Context_t* ctx)
 	il.on_key_wait_cb = input_cmd_key_wait;
 
 	input_register_lib(CMD_MODE, &il);
+
+	return 0;
+}
+
+int ed_bind_cmd_hook(Context_t *ctx, const char *cmd_id, void (*cb)(void*))
+{
+	return 0;
+}
+
+int ed_load_cmd_cfg(Context_t *ctx, const char *cfgfile)
+{
+	FILE *fp;
+	int   f_sz, r, i;
+	char *buf;
+	char  tmp[256] = {'\0'};
+	char  c;
+
+	fp = fopen(cfgfile, "r");
+	if (!fp)
+	{
+		fprintf(stderr, "Cannot open file: %s\n", cfgfile);
+		return -1;
+	}
+
+	r = fseek(fp, 0, SEEK_END);
+	if (r)
+	{
+		fprintf(stderr, "fseek failed: %s\n", cfgfile);
+		fclose(fp);
+
+		return -1;
+	}
+
+	f_sz = ftell(fp);
+	if (f_sz == -1L)
+	{
+		fprintf(stderr, "ftell failed: %s\n", cfgfile);
+		fclose(fp);
+
+		return -1;
+	}
+
+	rewind(fp);
+	fflush(fp);
+
+	buf = malloc(f_sz);
+	memset(buf, 0, f_sz);
+
+	r = read(fileno(fp), buf, f_sz);
+	if (r == 0)
+	{
+		fprintf(stderr, "read() 0 bytes read from %s\n", cfgfile);
+		fclose(fp);
+
+		return -1;
+	}
+
+	if (r < 0)
+	{
+		fprintf(stderr, "read() failed in file: %s\n", cfgfile);
+		fclose(fp);
+
+		return -1;
+	}
+
+	if (r != f_sz)
+	{
+		fprintf(stderr, "Couldn't read() the whole file: %s, %d != %d\n", cfgfile, r, f_sz);
+		fclose(fp);
+
+		return -1;
+	}
+
+
+	i = 0;
+
+	c = buf[i];
+	while (c)
+	{
+		if (isspace(c))
+		{
+			c = buf[++i];
+			continue;
+		}
+
+		switch (c)
+		{
+			case '{': 
+				memset(tmp, 0, sizeof(tmp));
+				break;
+
+			case '}':
+				ed_cmd_new(ctx, tmp);
+
+			default:
+				tmp[strlen(tmp)] = c;
+		}
+
+		c = buf[++i];
+	}
+
+	return 0;
+}
+
+int ed_reg_cmd_lib(Context_t *ctx, CmdLib_t *cl)
+{
+}
+
+int ed_cmd_new(Context_t *ctx, char *conf_str)
+{
+	Cmd_t *cmd;
+	char id[128];
+	char cmd_str[256];
+	char tmp[10];
+
+	sscanf(conf_str, "%[^';'];%[^';'];", id, cmd_str);
+	printf("Creating cmd with id: %s and cmd_str: %s\n", id, cmd_str);
+
+	memset(tmp, 0, sizeof(tmp));
+	memcpy(tmp, id, 3);
+
+	if (strcmp(tmp, "id="))
+	{
+		fprintf(stderr, "id wrong\n");
+		return -1;
+	}
+
+	memset(tmp, 0, sizeof(tmp));
+	memcpy(tmp, cmd_str, 4);
+
+	if (strcmp(tmp, "cmd="))
+	{
+		fprintf(stderr, "id wrong\n");
+		return -1;
+	}
+
+	cmd = malloc(sizeof(Cmd_t));
+
+	strncpy(cmd->cmd_id,  id + 3, sizeof(cmd->cmd_id));
+	strncpy(cmd->cmd_str, cmd_str + 4, sizeof(cmd->cmd_id));
+
+	ls_add(ctx->cmd_list, cmd);
 
 	return 0;
 }

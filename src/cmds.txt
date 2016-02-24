@@ -1,0 +1,14 @@
+{
+	id  = "file_load";
+	cmd = ":e";
+}
+
+{
+	id  = "file_save";
+	cmd = ":w";
+}
+
+{
+	id  = "main_quit";
+	cmd = ":q";
+}

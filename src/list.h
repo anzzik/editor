@@ -16,36 +16,32 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef BUFFER_H
-#define BUFFER_H
+#ifndef LIST_H
+#define LIST_H
 
-#define BCHUNK_SZ 128
-
-typedef struct BChunk_s BChunk_t;
-struct BChunk_s
+typedef struct ListNode_s ListNode_t;
+struct ListNode_s
 {
-	char	  buf[BCHUNK_SZ];
+	void *data;
 
-	BChunk_t *next, *prev;
+	ListNode_t *next;
 };
 
-typedef struct Buffer_s Buffer_t;
-struct Buffer_s
+typedef struct List_s List_t;
+struct List_s
 {
-	int	    c_pos;
-	char	   *name;
-	BChunk_t   *chk_start;
-	const char *filename;
+	ListNode_t *hd;
+	int (*ls_cmp)(void*, void*);
 };
 
-Buffer_t *buf_new();
-BChunk_t *buf_chunk_new(Buffer_t *b);
-int	  buf_chunk_add(Buffer_t *b, BChunk_t *bc);
-void	  buf_chunk_close(Buffer_t* b, BChunk_t *bc);
-void	  buf_close(Buffer_t *b);
-int	  buf_load_file(Buffer_t *b, const char *filename);
-int	  buf_save_file(Buffer_t *b, const char *filename);
-int	  buf_set_cursor(Buffer_t *b, int n);
+List_t *ls_new();
+void ls_add(List_t *l, void *data);
+void ls_rm(List_t *l, void *data);
+void *ls_search(List_t *l, void *data);
+void ls_node_free(ListNode_t *ln);
+void ls_free(List_t* l);
+void ls_traverse(List_t *l, void (*ls_tr_cb)(void*));
+int  ls_count(List_t* l);
 
 #endif
 

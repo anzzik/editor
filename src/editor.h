@@ -22,6 +22,16 @@
 #include "input.h"
 #include "screen.h"
 #include "buffer.h"
+#include "list.h"
+
+typedef enum CmdID_e CmdID_t;
+enum CmdID_e
+{
+	MAIN_QUIT = 0,
+	FILE_LOAD,
+	FILE_SAVE,
+	CMD_COUNT
+};
 
 typedef struct Context_s Context_t;
 struct Context_s
@@ -29,10 +39,38 @@ struct Context_s
 	InputMode_t  mode;
 	Buffer_t    *c_buffer;
 	Screen_t    *scr;
+	List_t	    *cmd_list;
 };
+
+typedef struct CmdHook_s CmdHook_t;
+struct CmdHook_s
+{
+	CmdID_t   cmd_id;
+	void (*cmd_hook_cb)(void*);
+};
+
+typedef struct CmdLib_s CmdLib_t;
+struct CmdLib_s
+{
+	CmdHook_t hooks[CMD_COUNT];
+};
+
+typedef struct Cmd_s Cmd_t;
+struct Cmd_s
+{
+	char	    cmd_id[128];
+	char        cmd_str[128];
+	void	  (*cmd_hook_cb)(void*);
+};
+
 
 Context_t *ed_new();
 int  ed_init(Context_t* ctx);
+int  ed_cmd_cmp(void *a, void *b);
+int  ed_load_cmd_cfg(Context_t *ctx, const char *cmdfile);
+int  ed_cmd_new(Context_t *ctx, char *conf_str);
+int  ed_reg_cmd_lib(Context_t *ctx, CmdLib_t *cl);
+int  ed_bind_cmd_hook(Context_t *ctx, const char *cmd_id, void (*cb)(void*));
 void ed_set_mode(Context_t *ctx, InputMode_t mode);
 int  ed_loop(Context_t *ctx);
 void ed_info(Context_t *ctx, const char *fmt, ...);
