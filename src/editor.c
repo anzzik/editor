@@ -351,6 +351,7 @@ int ed_loop(Context_t *ctx)
 
 				if (c == '\r' || c == '\n')
 				{
+					buf_add_ch(ctx->cmd_buffer, '\0');
 					ed_set_mode(ctx, HOTKEY_MODE);
 
 					ncs_set_cursor(ctx->scr, 0, 0);
@@ -422,6 +423,8 @@ void ed_info(Context_t *ctx, const char *fmt, ...)
 
 void ed_quit(Context_t *ctx)
 {
+	buf_close(ctx->c_buffer);
+	buf_close(ctx->cmd_buffer);
 	ncs_close(ctx->scr);
 	ncs_quit();
 	log_quit();

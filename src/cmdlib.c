@@ -22,11 +22,20 @@ int cmdlib_file_load_cb(void *uptr)
 {
 	Context_t *ctx;
 	BChunk_t  *bc;
+	int r;
+	char *cmd_buf;
 
 	ctx = uptr;
-	ed_info(uptr, "file_load_cb");
+	
+	cmd_buf = buf_get_content(ctx->cmd_buffer);
 
-	buf_load_file(ctx->c_buffer, "screen.c");
+	r = buf_load_file(ctx->c_buffer, "screen.c");
+	if (r < 0)
+	{
+		lprintf(LL_ERROR, "Failed to load buffer from file: %s", ctx->c_buffer->filename);
+		return r;
+	}
+
 	ncs_set_cursor(ctx->scr, 0, 0);
 
 	bc = ctx->c_buffer->chk_start;

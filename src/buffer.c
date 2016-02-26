@@ -54,9 +54,30 @@ BChunk_t *buf_chunk_new(Buffer_t *b)
 	bc->next = 0;
 	bc->prev = 0;
 
-	lprintf(LL_DEBUG, "Created a new chunk to buffer %s", b->filename);
+	lprintf(LL_DEBUG, "Created a new chunk (%zi bytes) to buffer %s", sizeof(bc->buf), b->filename);
 
 	return bc;
+}
+
+char *buf_get_content(Buffer_t *b)
+{
+	BChunk_t *bc;
+	int	  copied;
+	char	 *s;
+
+	copied = 0;
+	s = malloc(b->c_pos + 1);
+
+	bc = b->chk_start;
+	while (bc)
+	{
+		strncpy(s + copied, bc->buf, strlen(bc->buf));
+
+		copied += strlen(bc->buf);
+		bc = bc->next;
+	}
+
+	return s;
 }
 
 int buf_chunk_add(Buffer_t *b, BChunk_t *bc)
@@ -84,7 +105,7 @@ int buf_chunk_add(Buffer_t *b, BChunk_t *bc)
 		}
 	}
 
-	lprintf(LL_DEBUG, "Added a new chunk (%d bytes) to buffer with filename %s", BCHUNK_SZ, b->filename);
+	lprintf(LL_DEBUG, "Added a new chunk to buffer with filename %s", b->filename);
 
 	b->tot_sz += BCHUNK_SZ;
 
@@ -104,12 +125,14 @@ void buf_chunk_close(Buffer_t* b, BChunk_t *bc)
 	if (bc->next)
 		bc->next->prev = bc->prev;
 
+	lprintf(LL_DEBUG, "Chunk freed from the buffer with filename %s", b->filename);
+
 	free(bc);
 }
 
 void buf_close(Buffer_t *b)
 {
-	BChunk_t *bc;
+	BChunk_t *bc, *tmp;
 
 	bc = b->chk_start;
 	while (bc)
@@ -119,31 +142,32 @@ void buf_close(Buffer_t *b)
 		bc = b->chk_start;
 	}
 
+	if (b->fp)
+		fclose(b->fp);
+
+	lprintf(LL_DEBUG, "Closed the buffer with filename %s", b->filename);
+
 	free(b);
-}
-
-int buf_open_file(Buffer_t *b, const char *filename)
-{
-	b->fp = fopen(filename, "w+");
-	if (!b->fp)
-	{
-		return -1;
-	}
-
-	lprintf(LL_DEBUG, "Opened file %s", filename);
-
-	return 0;
 }
 
 int buf_load_file(Buffer_t *b, const char *filename)
 {
-	int	   r, i;
+	int	   r, read_b;
 	BChunk_t  *bc;
 
-	if (b->fp == NULL)
+	if (b->fp)
+		fclose(b->fp);
+
+	b->fp = fopen(filename, "r");
+	if (!b->fp)
 	{
-		buf_open_file(b, filename);
+		lprintf(LL_ERROR, "Failed opening file %s", filename);
+
+		return -1;
 	}
+
+	lprintf(LL_DEBUG, "Opened file %s to a buffer", filename);
+	read_b = 0;
 
 	bc = b->chk_start;
 	while (1)
@@ -151,27 +175,26 @@ int buf_load_file(Buffer_t *b, const char *filename)
 		r = read(fileno(b->fp), bc->buf, (sizeof(bc->buf) - 1));
 		if (r < 0)
 		{
-			fprintf(stderr, "read() failed in file: %s\n", filename);
+			lprintf(LL_ERROR, "Failed to read file: %s", filename);
 
-			return -1;
+			return r;
+
 		}
-
-		if (r == 0)
+		else if (r == (sizeof(bc->buf) - 1))
 		{
-			break;
-		}
-
-		if (r == (sizeof(bc->buf) - 1))
-		{
-			i += r;
 			bc = buf_chunk_new(b);
 			buf_chunk_add(b, bc);
 		}
+		else if(r == 0)
+			break;
+		
+		read_b += r;
+
 	}
 
-	b->filename = filename;
+	lprintf(LL_ERROR, "%d bytes read to the file: %s", read_b, filename);
 
-	return 0;
+	return read_b;
 }
 
 int buf_save_file(Buffer_t *b, const char *filename)
@@ -179,12 +202,19 @@ int buf_save_file(Buffer_t *b, const char *filename)
 	int	   r, written;
 	BChunk_t  *bc;
 
-	if (b->fp == NULL)
+	if (b->fp)
+		fclose(b->fp);
+
+	b->fp = fopen(filename, "w");
+	if (!b->fp)
 	{
-		buf_open_file(b, filename);
+		lprintf(LL_ERROR, "Failed opening file %s", filename);
+
+		return -1;
 	}
 
 	written = 0;
+
 	bc = b->chk_start;
 	while (bc)
 	{
@@ -196,6 +226,7 @@ int buf_save_file(Buffer_t *b, const char *filename)
 		r = write(fileno(b->fp), bc->buf, (strlen(bc->buf)));
 		if (r < 0)
 		{
+			lprintf(LL_ERROR, "Failed to write to file: %s", b->filename);
 			break;
 		}
 
@@ -207,6 +238,8 @@ int buf_save_file(Buffer_t *b, const char *filename)
 		written += r;
 		bc = bc->next;
 	}
+
+	lprintf(LL_ERROR, "%d bytes written to the file: %s", written, b->filename);
 
 	return r;
 }
@@ -227,7 +260,8 @@ int buf_add_ch(Buffer_t *b, char c)
 	
 	if (b->c_pos >= b->tot_sz)
 	{
-		lprintf(LL_DEBUG, "Buffer not big enough: %d bytes", b->tot_sz);
+		lprintf(LL_DEBUG, "Buffer not big enough, allocating a new chunk", b->tot_sz);
+
 		bc = buf_chunk_new(b);
 		buf_chunk_add(b, bc);
 	}

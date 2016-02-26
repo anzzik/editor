@@ -55,8 +55,6 @@ int ncs_init(Screen_t *s)
 	cbreak();
 	echo();
 
-//	ncs_addstr(s, 0, 20, 6, "%s %d\n", "hellou ", 6);
-
 	wrefresh(s->wd);
 
 	return 0;
