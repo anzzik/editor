@@ -22,18 +22,24 @@
 #include <unistd.h>
 
 #include "buffer.h"
+#include "log.h"
 
-Buffer_t *buf_new()
+Buffer_t *buf_new(char *filename)
 {
 	Buffer_t *b;
 	BChunk_t *bc;
 
 	b = malloc(sizeof(Buffer_t));
-	b->filename = "scratch.txt";
+	b->filename = filename;
 	b->c_pos = 0;
+	b->fp = NULL;
+
+	lprintf(LL_DEBUG, "Created a new buffer: %s", b->filename);
 
 	bc = buf_chunk_new(b);
 	buf_chunk_add(b, bc);
+
+	b->tot_sz = BCHUNK_SZ;
 	
 	return b;
 }
@@ -47,6 +53,8 @@ BChunk_t *buf_chunk_new(Buffer_t *b)
 	memset(bc->buf, '\0', sizeof(bc->buf));
 	bc->next = 0;
 	bc->prev = 0;
+
+	lprintf(LL_DEBUG, "Created a new chunk to buffer %s", b->filename);
 
 	return bc;
 }
@@ -75,6 +83,10 @@ int buf_chunk_add(Buffer_t *b, BChunk_t *bc)
 			c = c->next;
 		}
 	}
+
+	lprintf(LL_DEBUG, "Added a new chunk (%d bytes) to buffer with filename %s", BCHUNK_SZ, b->filename);
+
+	b->tot_sz += BCHUNK_SZ;
 
 	return 0;
 }
@@ -110,27 +122,36 @@ void buf_close(Buffer_t *b)
 	free(b);
 }
 
+int buf_open_file(Buffer_t *b, const char *filename)
+{
+	b->fp = fopen(filename, "w+");
+	if (!b->fp)
+	{
+		return -1;
+	}
+
+	lprintf(LL_DEBUG, "Opened file %s", filename);
+
+	return 0;
+}
+
 int buf_load_file(Buffer_t *b, const char *filename)
 {
-	FILE	  *fp;
 	int	   r, i;
 	BChunk_t  *bc;
 
-	fp = fopen(filename, "r");
-	if (!fp)
+	if (b->fp == NULL)
 	{
-		fprintf(stderr, "Cannot open file: %s\n", filename);
-		return -1;
+		buf_open_file(b, filename);
 	}
 
 	bc = b->chk_start;
 	while (1)
 	{
-		r = read(fileno(fp), bc->buf, (sizeof(bc->buf) - 1));
+		r = read(fileno(b->fp), bc->buf, (sizeof(bc->buf) - 1));
 		if (r < 0)
 		{
 			fprintf(stderr, "read() failed in file: %s\n", filename);
-			fclose(fp);
 
 			return -1;
 		}
@@ -150,47 +171,84 @@ int buf_load_file(Buffer_t *b, const char *filename)
 
 	b->filename = filename;
 
-	fclose(fp);
-
 	return 0;
 }
 
 int buf_save_file(Buffer_t *b, const char *filename)
 {
-	FILE	  *fp;
-	int	   r;
+	int	   r, written;
 	BChunk_t  *bc;
 
-	fp = fopen(filename, "w");
-	if (!fp)
+	if (b->fp == NULL)
 	{
-		fprintf(stderr, "Cannot open file: %s\n", filename);
-		return -1;
+		buf_open_file(b, filename);
 	}
 
+	written = 0;
 	bc = b->chk_start;
 	while (bc)
 	{
-		r = write(fileno(fp), bc->buf, (sizeof(bc->buf) - 1));
+		fseek(b->fp, written, SEEK_SET);
+		fflush(b->fp);
+
+		lprintf(LL_DEBUG, "Buffer to write: %s", bc->buf);
+
+		r = write(fileno(b->fp), bc->buf, (strlen(bc->buf)));
 		if (r < 0)
 		{
-			fprintf(stderr, "write() failed in file: %s\n", filename);
-
-			return -1;
+			break;
 		}
 
 		if (r == 0)
+		{
 			break;
+		}
 
+		written += r;
 		bc = bc->next;
 	}
 
-	return 0;
+	return r;
 }
 
 int buf_set_cursor(Buffer_t *b, int n)
 {
 	b->c_pos = n;
+
+	return 0;
+}
+
+int buf_add_ch(Buffer_t *b, char c)
+{
+	BChunk_t *bc;
+	int n;
+	int offset;
+	int chunk_n;
+	
+	if (b->c_pos >= b->tot_sz)
+	{
+		lprintf(LL_DEBUG, "Buffer not big enough: %d bytes", b->tot_sz);
+		bc = buf_chunk_new(b);
+		buf_chunk_add(b, bc);
+	}
+
+	offset = b->c_pos;
+	n = BCHUNK_SZ;
+	chunk_n = 1;
+
+	bc = b->chk_start;
+	while (b->c_pos > (n - 1))
+	{
+		bc = bc->next;
+		n += BCHUNK_SZ;
+		offset -= BCHUNK_SZ;
+
+		chunk_n++;
+	}
+
+	bc->buf[offset] = c;
+
+	b->c_pos++;
 
 	return 0;
 }

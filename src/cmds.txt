@@ -1,14 +1,48 @@
 {
-	id  = "file_load";
-	cmd = ":e";
+	id  = file_load;
+	cmd = :e;
+	hotkey = 6;
 }
 
 {
-	id  = "file_save";
-	cmd = ":w";
+	id  = file_save;
+	cmd = :w;
+	hotkey = s;
 }
 
 {
-	id  = "main_quit";
-	cmd = ":q";
+	id  = main_quit;
+	cmd = :q;
+	hotkey = q;
 }
+
+{
+	id  = cursor_up;
+	cmd = :up;
+	hotkey = k;
+}
+
+{
+	id  = cursor_down;
+	cmd = :down;
+	hotkey = j;
+}
+
+{
+	id  = cursor_left;
+	cmd = :left;
+	hotkey = h;
+}
+
+{
+	id  = cursor_right;
+	cmd = :right;
+	hotkey = l;
+}
+
+{
+	id  = cmd_line;
+	cmd = :;
+	hotkey = :;
+}
+

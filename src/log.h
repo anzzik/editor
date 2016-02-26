@@ -16,39 +16,37 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef INPUT_H
-#define INPUT_H
+#ifndef LOG_H
+#define LOG_H
 
-typedef enum InputMode_e InputMode_t;
-enum InputMode_e
+#include <stdio.h>
+
+#define lprintf( level, format, args... ) \
+ log_f( __FILE__, __LINE__, level, format, ## args )
+
+typedef enum LogLevel_e LogLevel_t;
+enum LogLevel_e
 {
-	CMD_MODE = 0,
-	HOTKEY_MODE,
-	INSERT_MODE,
-	MODE_COUNT
+	LL_DEBUG = 0,
+	LL_NOTICE,
+	LL_WARNING,
+	LL_ERROR,
+	LL_CRITICAL,
+	LL_COUNT
 };
 
-typedef struct InputLib_s InputLib_t;
-struct InputLib_s
+typedef struct LogLevelConf_s LogLevelConf_t;
+struct LogLevelConf_s
 {
-	int (*on_key_down_cb)(void*, int c);
-	int (*on_key_wait_cb)(void*);
+	LogLevel_t level;
+	FILE *fp;
+
+	LogLevelConf_t *next, *prev;
 };
 
-typedef struct InputModeInfo_s InputModeInfo_t;
-struct InputModeInfo_s
-{
-	InputMode_t mode;
-	InputLib_t *lib;
-
-	InputModeInfo_t *next, *prev;
-};
-
-void input_init();
-InputModeInfo_t *input_mode_new(InputMode_t mode);
-int input_register_lib(InputMode_t mode, InputLib_t* il);
-int input_key_down(void *uptr, int c);
-int input_key_wait(void *uptr);
+void log_f(const char* filename, int linenumber, LogLevel_t level, const char* fmt, ...);
+int log_add(LogLevel_t l, char *filename);
+void log_quit();
 
 #endif
 

@@ -24,7 +24,7 @@
 typedef struct BChunk_s BChunk_t;
 struct BChunk_s
 {
-	char	  buf[BCHUNK_SZ];
+	char	  buf[BCHUNK_SZ + 1];
 
 	BChunk_t *next, *prev;
 };
@@ -32,20 +32,24 @@ struct BChunk_s
 typedef struct Buffer_s Buffer_t;
 struct Buffer_s
 {
+	FILE	   *fp;
 	int	    c_pos;
+	size_t      tot_sz;
 	char	   *name;
 	BChunk_t   *chk_start;
 	const char *filename;
 };
 
-Buffer_t *buf_new();
+Buffer_t *buf_new(char *filename);
 BChunk_t *buf_chunk_new(Buffer_t *b);
 int	  buf_chunk_add(Buffer_t *b, BChunk_t *bc);
 void	  buf_chunk_close(Buffer_t* b, BChunk_t *bc);
 void	  buf_close(Buffer_t *b);
+int	  buf_open_file(Buffer_t *b, const char *filename);
 int	  buf_load_file(Buffer_t *b, const char *filename);
 int	  buf_save_file(Buffer_t *b, const char *filename);
 int	  buf_set_cursor(Buffer_t *b, int n);
+int	  buf_add_ch(Buffer_t *b, char c);
 
 #endif
 
