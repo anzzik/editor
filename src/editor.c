@@ -85,6 +85,26 @@ CmdType_t ed_cmd_get_type(const char *cmd_id)
 	return -1;
 }
 
+Cmd_t *ed_get_cmd_by_cmdstr(const char *cmd_str)
+{
+	int i;
+	char cmd[128];
+
+	memcpy(&cmd, '\0', sizeof(cmd));
+
+	for (i = 0; i < CMD_COUNT; i++)
+	{
+		memcpy(cmd, cmd_str, strlen(cmds[i].cmd_str));
+
+		if (!strcmp(cmds[i].cmd_str, cmd))
+			return &cmds[i];
+
+		memcpy(&cmd, '\0', sizeof(cmd));
+	}
+
+	return NULL;
+}
+
 int ed_init(Context_t* ctx)
 {
 	InputLib_t il;
@@ -126,7 +146,7 @@ int ed_init(Context_t* ctx)
 	return 0;
 }
 
-int ed_bind_cmd_hook(Context_t *ctx, CmdType_t cmd_type, int (*cb)(void*))
+int ed_bind_cmd_hook(Context_t *ctx, CmdType_t cmd_type, int (*cb)(void*, char*))
 {
 	if (cmd_type >= CMD_COUNT)
 	{
@@ -331,7 +351,7 @@ int ed_loop(Context_t *ctx)
 				cmd = ed_get_cmd_by_hk(c);
 				if (cmd)
 				{
-					r = cmd->cmd_cb(ctx);
+					r = cmd->cmd_cb(ctx, NULL);
 					if (!r)
 						break;
 				}

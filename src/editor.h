@@ -45,6 +45,18 @@ enum EdMode_e
 	ED_QUITTING
 };
 
+typedef struct CmdLib_s CmdLib_t;
+struct CmdLib_s
+{
+	int (*on_file_load_cb)(void*, char*);
+	int (*on_file_save_cb)(void*, char*);
+	int (*on_main_quit_cb)(void*, char*);
+	int (*on_cursor_up_cb)(void*);
+	int (*on_cursor_down_cb)(void*);
+	int (*on_cursor_left_cb)(void*);
+	int (*on_cursor_right_cb)(void*);
+	int (*on_cmd_line_cb)(void*, char *);
+};
 
 typedef struct Context_s Context_t;
 struct Context_s
@@ -55,6 +67,7 @@ struct Context_s
 	Buffer_t    *c_buffer;
 	Buffer_t    *cmd_buffer;
 	Screen_t    *scr;
+//	CmdLib_t    *cmdlib;
 };
 
 typedef struct Cmd_s Cmd_t;
@@ -64,25 +77,32 @@ struct Cmd_s
 	char	    cmd_id[128];
 	char        cmd_str[128];
 	char        cmd_hk[128];
-	int	  (*cmd_cb)(void*);
+	int	    (*cmd_cb)(void*, char*);
 };
+
+/*typedef struct CmdHook_s CmdHook_t;
+struct CmdHook_s
+{
+	CmdType_t type;
+	int (*cmd_hook_cb)(void*);
+};*/
 
 typedef struct CmdHook_s CmdHook_t;
 struct CmdHook_s
 {
 	CmdType_t type;
-	int (*cmd_hook_cb)(void*);
+	int (*cmd_hook_cb)(void*, char*);
 };
-
 
 Context_t *ed_new();
 int  ed_init(Context_t* ctx);
 int  ed_cmd_cmp(void *a, void *b);
 void ed_dump_cmds();
 Cmd_t *ed_get_cmd_by_hk(int c);
+Cmd_t *ed_get_cmd_by_cmdstr(const char *cmd_str);
 int  ed_load_cmd_cfg(Context_t *ctx, const char *cmdfile);
 int  ed_cmd_parse_cfg(Context_t *ctx, char *conf_str);
-int  ed_bind_cmd_hook(Context_t *ctx, CmdType_t cmd_type, int (*cb)(void*));
+int  ed_bind_cmd_hook(Context_t *ctx, CmdType_t cmd_type, int (*cb)(void*, char*));
 void ed_set_mode(Context_t *ctx, InputMode_t mode);
 void ed_set_edmode(Context_t *ctx, EdMode_t mode);
 int  ed_loop(Context_t *ctx);

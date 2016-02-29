@@ -1,3 +1,4 @@
+#include <string.h>
 #include "cmdlib.h"
 #include "log.h"
 
@@ -13,23 +14,46 @@ CmdHook_t cmdlib[] = {
 	{ CMD_COUNT,   NULL }
 };
 
+/*CmdLib_t r_cmdlib = {
+	cmdlib_file_load_cb,
+	cmdlib_file_save_cb,
+	cmdlib_main_quit_cb,
+	cmdlib_cursor_up_cb,
+	cmdlib_cursor_down_cb,
+	cmdlib_cursor_left_cb,
+	cmdlib_cursor_right_cb,
+	cmdlib_cmd_line_cb
+};
+
+CmdLib_t *cmdlib_get_rlib()
+{
+	return &r_cmdlib;
+}*/
+
 CmdHook_t *cmdlib_get_lib()
 {
 	return &cmdlib[0];
 }
 
-int cmdlib_file_load_cb(void *uptr)
+
+int cmdlib_file_load_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
 	BChunk_t  *bc;
 	int r;
 	char *cmd_buf;
+	char def_fname[128];
 
 	ctx = uptr;
+
+	if (args)
+		strncpy(def_fname, args, sizeof(def_fname));
+	else
+		strncpy(def_fname, "scratch", sizeof(def_fname));
 	
 	cmd_buf = buf_get_content(ctx->cmd_buffer);
 
-	r = buf_load_file(ctx->c_buffer, "screen.c");
+	r = buf_load_file(ctx->c_buffer, def_fname);
 	if (r < 0)
 	{
 		lprintf(LL_ERROR, "Failed to load buffer from file: %s", ctx->c_buffer->filename);
@@ -50,12 +74,15 @@ int cmdlib_file_load_cb(void *uptr)
 	return 0;
 }
 
-int cmdlib_file_save_cb(void *uptr)
+int cmdlib_file_save_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
 	int	   r;
 
 	ctx = uptr;
+
+	if (args)
+		strncpy(ctx->c_buffer->filename, args, sizeof(*ctx->c_buffer->filename));
 
 	r = buf_save_file(ctx->c_buffer, ctx->c_buffer->filename);
 
@@ -72,7 +99,7 @@ int cmdlib_file_save_cb(void *uptr)
 	return r;
 }
 
-int cmdlib_cursor_up_cb(void *uptr)
+int cmdlib_cursor_up_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
 
@@ -83,7 +110,7 @@ int cmdlib_cursor_up_cb(void *uptr)
 	return 0;
 }
 
-int cmdlib_cursor_down_cb(void *uptr)
+int cmdlib_cursor_down_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
 
@@ -94,7 +121,7 @@ int cmdlib_cursor_down_cb(void *uptr)
 	return 0;
 }
 
-int cmdlib_cursor_left_cb(void *uptr)
+int cmdlib_cursor_left_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
 
@@ -105,7 +132,7 @@ int cmdlib_cursor_left_cb(void *uptr)
 	return 0;
 }
 
-int cmdlib_cursor_right_cb(void *uptr)
+int cmdlib_cursor_right_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
 
@@ -116,7 +143,7 @@ int cmdlib_cursor_right_cb(void *uptr)
 	return 0;
 }
 
-int cmdlib_cmd_line_cb(void *uptr)
+int cmdlib_cmd_line_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
 
@@ -131,7 +158,7 @@ int cmdlib_cmd_line_cb(void *uptr)
 	return 0;
 }
 
-int cmdlib_main_quit_cb(void *uptr)
+int cmdlib_main_quit_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
 
@@ -140,3 +167,4 @@ int cmdlib_main_quit_cb(void *uptr)
 
 	return 0;
 }
+
