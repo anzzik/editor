@@ -52,6 +52,7 @@ void ncs_addch(Screen_t *s, char c);
 //void ncs_addstr(Screen_t *s, char *str, int x, int y, int n);
 void ncs_addstr(Screen_t *s, int x, int y, const char *fmt, ...);
 int ncs_render_data(Screen_t *s, char *p);
+int  ncs_scroll(Screen_t *s, int n);
 int  ncs_clear(Screen_t *s);
 void ncs_close(Screen_t *s);
 void ncs_quit();

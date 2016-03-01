@@ -77,6 +77,8 @@ char *buf_get_content(Buffer_t *b)
 		bc = bc->next;
 	}
 
+	s[copied] = '\0';
+
 	return s;
 }
 

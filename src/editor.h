@@ -101,7 +101,6 @@ int  ed_cmd_cmp(void *a, void *b);
 void ed_dump_cmds();
 Cmd_t *ed_get_cmd(char *cmd);
 Cmd_t *ed_get_cmd_by_hk(int c);
-Cmd_t *ed_get_cmd_by_cmdstr(const char *cmd_str);
 int  ed_load_cmd_cfg(Context_t *ctx, const char *cmdfile);
 int  ed_cmd_parse_cfg(Context_t *ctx, char *conf_str);
 int  ed_bind_cmd_hook(Context_t *ctx, CmdType_t cmd_type, int (*cb)(void*, char*));

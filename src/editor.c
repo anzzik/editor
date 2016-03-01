@@ -63,12 +63,7 @@ Context_t *ed_new()
 
 int ed_cmd_cmp(void *a, void *b)
 {
-	Cmd_t *aa, *bb;
-
-	aa = a;
-	bb = b;
-
-	return strcmp(aa->cmd_id, bb->cmd_id);
+	return strcmp(((Cmd_t*)a)->cmd_id, ((Cmd_t*)b)->cmd_id);
 }
 
 CmdType_t ed_cmd_get_type(const char *cmd_id)
@@ -98,25 +93,6 @@ Cmd_t *ed_get_cmd(char *cmd)
 	{
 		if (!strcmp(cmds[i].cmd_str, cmd))
 			return &cmds[i];
-	}
-
-	return NULL;
-}
-
-Cmd_t *ed_get_cmd_by_cmdstr(const char *cmd_str)
-{
-	int i;
-	char cmd[128];
-
-	memset(&cmd, 0, sizeof(cmd));
-	for (i = 0; i < CMD_COUNT; i++)
-	{
-		memcpy(cmd, cmd_str, strlen(cmds[i].cmd_str));
-
-		if (!strcmp(cmds[i].cmd_str, cmd))
-			return &cmds[i];
-
-		memset(&cmd, 0, sizeof(cmd));
 	}
 
 	return NULL;
@@ -167,7 +143,7 @@ int ed_bind_cmd_hook(Context_t *ctx, CmdType_t cmd_type, int (*cb)(void*, char*)
 	cmds[cmd_type].cmd_cb = cb;
 
 	return 0;
-}
+} 
 
 int ed_load_cmd_cfg(Context_t *ctx, const char *cfgfile)
 {
@@ -263,7 +239,7 @@ int ed_load_cmd_cfg(Context_t *ctx, const char *cfgfile)
 	free(buf);
 
 	return 0;
-}
+} 
 
 int ed_cmd_parse_cfg(Context_t *ctx, char *conf_str)
 {
@@ -450,11 +426,12 @@ int ed_parse_cmd_buf(Context_t *ctx)
 	tok = strtok(c, " ");
 
 	cmd = ed_get_cmd(tok);
-	free(c);
 	if (cmd == NULL)
 	{
 		lprintf(LL_NOTICE, "Command %s not found", tok);
+
 		free(cmdline);
+		free(c);
 
 		return -1;
 	}
@@ -463,6 +440,7 @@ int ed_parse_cmd_buf(Context_t *ctx)
 
 	cmd->cmd_cb(ctx, cmdline + strlen(tok)+1);
 
+	free(c);
 	free(cmdline);
 
 	return 0;
@@ -498,5 +476,4 @@ void ed_free(Context_t* ctx)
 {
 	free(ctx);
 }
-
 

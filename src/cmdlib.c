@@ -44,13 +44,16 @@ int cmdlib_file_load_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
+	memset(def_fname, '\0', sizeof(def_fname));
 	if (args)
 		strncpy(def_fname, args, sizeof(def_fname));
 	else
 		strncpy(def_fname, "scratch", sizeof(def_fname));
 	
 	ncs_clear(ctx->scr);
+	buf_clear(ctx->c_buffer);
 
+	lprintf(LL_DEBUG, "Trying to open file: \"%s\"", def_fname);
 	r = buf_load_file(ctx->c_buffer, def_fname);
 	if (r < 0)
 	{
@@ -60,7 +63,6 @@ int cmdlib_file_load_cb(void *uptr, char *args)
 
 	ncs_set_cursor(ctx->scr, 0, 0);
 
-	ncs_clear(ctx->scr);
 	bc = ctx->c_buffer->chk_start;
 	while (bc)
 	{

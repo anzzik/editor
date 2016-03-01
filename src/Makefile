@@ -17,7 +17,6 @@ sources = \
 	list.c \
 	cmdlib.c \
 	log.c \
-	memory_tracer.c \
 
 OBJS = $(sources:%.c=$(obj_dir)%.o)
 deps = $(sources:%.c=$(deps_dir)%.d)

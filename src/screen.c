@@ -92,32 +92,49 @@ void ncs_cursor_revert(Screen_t *s)
 
 void ncs_cursor_lf(Screen_t *s, int n)
 {
-	wmove(s->wd, s->c_y, s->c_x - n);
-	s->c_x -=  n;
+
+	if (s->c_x > 0)
+	{
+		wmove(s->wd, s->c_y, s->c_x - n);
+		s->c_x -= n;
+	}
 
 	wrefresh(s->wd);
 }
 
 void ncs_cursor_rt(Screen_t *s, int n)
 {
-	wmove(s->wd, s->c_y, s->c_x + n);
-	s->c_x += n;
+	if (s->c_x < s->w - 1)
+	{
+		wmove(s->wd, s->c_y, s->c_x + n);
+		s->c_x += n;
+	}
 
 	wrefresh(s->wd);
 }
 
 void ncs_cursor_up(Screen_t *s, int n)
 {
-	wmove(s->wd, s->c_y - n, s->c_x);
-	s->c_y -= n;
+	if (s->c_y <= 0)
+		ncs_scroll(s, -1);
+	else
+	{
+		wmove(s->wd, s->c_y - n, s->c_x);
+		s->c_y -= n;
+	}
 
 	wrefresh(s->wd);
 }
 
 void ncs_cursor_dw(Screen_t *s, int n)
 {
-	wmove(s->wd, s->c_y + n, s->c_x);
-	s->c_y += n;
+	if (s->c_y > s->h - 4)
+		ncs_scroll(s, 1);
+	else
+	{
+		wmove(s->wd, s->c_y + n, s->c_x);
+		s->c_y += n;
+	}
 
 	wrefresh(s->wd);
 }
@@ -175,6 +192,13 @@ int ncs_render_data(Screen_t *s, char *p)
 	}
 
 	wrefresh(s->wd);
+
+	return 0;
+}
+
+int ncs_scroll(Screen_t *s, int n)
+{
+	wscrl(s->wd, n);
 
 	return 0;
 }
