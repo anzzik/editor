@@ -31,6 +31,7 @@ void log_f(const char* filename, int linenumber, LogLevel_t level, const char* f
 	time_t  t;
 	struct	tm *tinfo;
 	char    ts[20];
+	int	i;
 	LogLevelConf_t *c;
 
 	va_start(ap, fmt);
@@ -41,12 +42,15 @@ void log_f(const char* filename, int linenumber, LogLevel_t level, const char* f
 	tinfo = localtime(&t);
 	strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tinfo);
 
-	c = llc[level];
-	while (c)
+	for (i = level; i >= 0; i--)
 	{
-		fprintf(c->fp, "%s %s:%d %s\n", ts, filename, linenumber, buffer);
-		fflush(c->fp);
-		c = c->prev;
+		c = llc[i];
+		while (c)
+		{
+			fprintf(c->fp, "%s %s:%d %s\n", ts, filename, linenumber, buffer);
+			fflush(c->fp);
+			c = c->prev;
+		}
 	}
 
 }

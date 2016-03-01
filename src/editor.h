@@ -19,7 +19,6 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
-#include "input.h"
 #include "screen.h"
 #include "buffer.h"
 
@@ -42,6 +41,9 @@ typedef enum EdMode_e EdMode_t;
 enum EdMode_e
 {
 	ED_RUNNING = 0,
+	ED_CMD_MODE,
+	ED_HOTKEY_MODE,
+	ED_INSERT_MODE,
 	ED_QUITTING
 };
 
@@ -62,8 +64,7 @@ typedef struct Context_s Context_t;
 struct Context_s
 {
 	char	     pending_info[128];
-	EdMode_t     ed_mode;
-	InputMode_t  mode;
+	EdMode_t     mode;
 	Buffer_t    *c_buffer;
 	Buffer_t    *cmd_buffer;
 	Screen_t    *scr;
@@ -98,16 +99,18 @@ Context_t *ed_new();
 int  ed_init(Context_t* ctx);
 int  ed_cmd_cmp(void *a, void *b);
 void ed_dump_cmds();
+Cmd_t *ed_get_cmd(char *cmd);
 Cmd_t *ed_get_cmd_by_hk(int c);
 Cmd_t *ed_get_cmd_by_cmdstr(const char *cmd_str);
 int  ed_load_cmd_cfg(Context_t *ctx, const char *cmdfile);
 int  ed_cmd_parse_cfg(Context_t *ctx, char *conf_str);
 int  ed_bind_cmd_hook(Context_t *ctx, CmdType_t cmd_type, int (*cb)(void*, char*));
-void ed_set_mode(Context_t *ctx, InputMode_t mode);
-void ed_set_edmode(Context_t *ctx, EdMode_t mode);
+void ed_set_mode(Context_t *ctx, EdMode_t mode);
 int  ed_loop(Context_t *ctx);
+int  ed_parse_cmd_buf(Context_t *ctx);
 void ed_info(Context_t *ctx, const char *fmt, ...);
 void ed_quit(Context_t *ctx);
+void ed_free(Context_t *ctx);
 
 #endif
 

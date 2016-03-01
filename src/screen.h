@@ -50,8 +50,9 @@ void ncs_cursor_dw(Screen_t *s, int n);
 void ncs_addch_xy(Screen_t *s, char c, int x, int y);
 void ncs_addch(Screen_t *s, char c);
 //void ncs_addstr(Screen_t *s, char *str, int x, int y, int n);
-void ncs_addstr(Screen_t *s, int x, int y, int n, const char *fmt, ...);
-int  ncs_render_data(Screen_t *s, char *b);
+void ncs_addstr(Screen_t *s, int x, int y, const char *fmt, ...);
+int ncs_render_data(Screen_t *s, char *p);
+int  ncs_clear(Screen_t *s);
 void ncs_close(Screen_t *s);
 void ncs_quit();
 

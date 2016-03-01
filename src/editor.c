@@ -22,7 +22,6 @@
 #include <ctype.h>
 
 #include "editor.h"
-#include "input_cmd.h"
 #include "cmdlib.h"
 #include "log.h"
 
@@ -85,13 +84,31 @@ CmdType_t ed_cmd_get_type(const char *cmd_id)
 	return -1;
 }
 
+Cmd_t *ed_get_cmd(char *cmd)
+{
+	int i;
+
+	if (!cmd)
+	{
+		lprintf(LL_ERROR, "Cmdline empty in ed_get_cmd");
+		return NULL;
+	}
+
+	for (i = 0; i < CMD_COUNT; i++)
+	{
+		if (!strcmp(cmds[i].cmd_str, cmd))
+			return &cmds[i];
+	}
+
+	return NULL;
+}
+
 Cmd_t *ed_get_cmd_by_cmdstr(const char *cmd_str)
 {
 	int i;
 	char cmd[128];
 
-	memcpy(&cmd, '\0', sizeof(cmd));
-
+	memset(&cmd, 0, sizeof(cmd));
 	for (i = 0; i < CMD_COUNT; i++)
 	{
 		memcpy(cmd, cmd_str, strlen(cmds[i].cmd_str));
@@ -99,7 +116,7 @@ Cmd_t *ed_get_cmd_by_cmdstr(const char *cmd_str)
 		if (!strcmp(cmds[i].cmd_str, cmd))
 			return &cmds[i];
 
-		memcpy(&cmd, '\0', sizeof(cmd));
+		memset(&cmd, 0, sizeof(cmd));
 	}
 
 	return NULL;
@@ -107,7 +124,6 @@ Cmd_t *ed_get_cmd_by_cmdstr(const char *cmd_str)
 
 int ed_init(Context_t* ctx)
 {
-	InputLib_t il;
 	CmdHook_t *hooks;
 	int i;
 
@@ -123,14 +139,8 @@ int ed_init(Context_t* ctx)
 	ctx->c_buffer = buf_new("scratch.txt");
 	ctx->cmd_buffer = buf_new("cmdbuf.txt");
 
-	/* input */
-	input_init();
-	il.on_key_down_cb = input_cmd_key_down;
-	il.on_key_wait_cb = input_cmd_key_wait;
-	input_register_lib(CMD_MODE, &il);
-
 	/* main context */
-	ed_set_mode(ctx, HOTKEY_MODE);
+	ed_set_mode(ctx, ED_HOTKEY_MODE);
 	ed_load_cmd_cfg(ctx, "cmds.txt");
 
 	hooks = cmdlib_get_lib();
@@ -250,6 +260,8 @@ int ed_load_cmd_cfg(Context_t *ctx, const char *cfgfile)
 		c = buf[++i];
 	}
 
+	free(buf);
+
 	return 0;
 }
 
@@ -299,14 +311,10 @@ int ed_cmd_parse_cfg(Context_t *ctx, char *conf_str)
 	return 0;
 }
 
-void ed_set_mode(Context_t *ctx, InputMode_t mode)
+void ed_set_mode(Context_t *ctx, EdMode_t mode)
 {
 	ctx->mode = mode;
-}
-
-void ed_set_edmode(Context_t *ctx, EdMode_t mode)
-{
-	ctx->ed_mode = mode;
+	ed_info(ctx, "Mode: %d", ctx->mode);
 }
 
 Cmd_t *ed_get_cmd_by_hk(c)
@@ -333,47 +341,50 @@ Cmd_t *ed_get_cmd_by_hk(c)
 int ed_loop(Context_t *ctx)
 {
 	Cmd_t    *cmd;
-	int	  c, r;
+	int	  r;
+	char	  c;
 
 	while (1)
 	{
-		if (ctx->ed_mode == ED_QUITTING)
-		{
+		if (ctx->mode == ED_QUITTING)
 			break;
-		}
 
+		c = getchar();
 		switch (ctx->mode)
 		{
-			case HOTKEY_MODE:
-				c = input_key_wait(ctx);
-
-//				ed_info(ctx, "%d", c);
+			case ED_HOTKEY_MODE:
 				cmd = ed_get_cmd_by_hk(c);
 				if (cmd)
 				{
 					r = cmd->cmd_cb(ctx, NULL);
 					if (!r)
 						break;
+
+					lprintf(LL_CRITICAL, "Command \"%s\" was not executed succesfully", cmd->cmd_id);
+
+					return -1;
 				}
 
 				switch (c)
 				{
 					case 'i':
-						ed_set_mode(ctx, INSERT_MODE);
+						ed_set_mode(ctx, ED_INSERT_MODE);
 
 						break;
 				}
 
 				break;
 
-			case CMD_MODE:
-				c = input_key_wait(ctx);
+			case ED_CMD_MODE:
 
 				if (c == '\r' || c == '\n')
 				{
 					buf_add_ch(ctx->cmd_buffer, '\0');
-					ed_set_mode(ctx, HOTKEY_MODE);
+					ed_parse_cmd_buf(ctx);
 
+					buf_clear(ctx->cmd_buffer);
+
+					ed_set_mode(ctx, ED_HOTKEY_MODE);
 					ncs_set_cursor(ctx->scr, 0, 0);
 					break;
 				}
@@ -385,11 +396,11 @@ int ed_loop(Context_t *ctx)
 
 				break;
 
-			case INSERT_MODE:
-				c = input_key_wait(ctx);
+			case ED_INSERT_MODE:
+
 				if (c == 27)
 				{
-					ed_set_mode(ctx, HOTKEY_MODE);
+					ed_set_mode(ctx, ED_HOTKEY_MODE);
 					break;
 				}
 
@@ -417,10 +428,42 @@ int ed_loop(Context_t *ctx)
 				break;
 
 			default:
-				lprintf(LL_ERROR, "mode not set!\n");
+				lprintf(LL_ERROR, "Mode not set!\n");
 				break;
 		}
 	}
+
+	return 0;
+}
+
+int ed_parse_cmd_buf(Context_t *ctx)
+{
+	Cmd_t *cmd;
+	char  *cmdline;
+	char  *c;
+	char  *tok;
+
+	cmdline = buf_get_content(ctx->cmd_buffer);
+	c = malloc(strlen(cmdline) + 1);
+	strncpy(c, cmdline, strlen(cmdline) + 1);
+
+	tok = strtok(c, " ");
+
+	cmd = ed_get_cmd(tok);
+	free(c);
+	if (cmd == NULL)
+	{
+		lprintf(LL_NOTICE, "Command %s not found", tok);
+		free(cmdline);
+
+		return -1;
+	}
+
+	lprintf(LL_NOTICE, "Command %s loaded", cmd->cmd_id);
+
+	cmd->cmd_cb(ctx, cmdline + strlen(tok)+1);
+
+	free(cmdline);
 
 	return 0;
 }
@@ -435,7 +478,8 @@ void ed_info(Context_t *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	ncs_start_color(ctx->scr, 2);
-	ncs_addstr(ctx->scr, 0, ctx->scr->h - 2, strlen(buffer), "%s", buffer);
+	ncs_addstr(ctx->scr, 0, ctx->scr->h - 2, "%*s", 20, " ");
+	ncs_addstr(ctx->scr, 0, ctx->scr->h - 2, "%s", buffer);
 	ncs_stop_color(ctx->scr, 2);
 
 	ncs_cursor_revert(ctx->scr);
@@ -443,11 +487,16 @@ void ed_info(Context_t *ctx, const char *fmt, ...)
 
 void ed_quit(Context_t *ctx)
 {
-	buf_close(ctx->c_buffer);
-	buf_close(ctx->cmd_buffer);
+	buf_free(ctx->c_buffer);
+	buf_free(ctx->cmd_buffer);
 	ncs_close(ctx->scr);
 	ncs_quit();
 	log_quit();
+}
+
+void ed_free(Context_t* ctx)
+{
+	free(ctx);
 }
 
 

@@ -134,7 +134,7 @@ void ncs_addch(Screen_t *s, char c)
 	wrefresh(s->wd);
 }
 
-void ncs_addstr(Screen_t *s, int x, int y, int n, const char *fmt, ...)
+void ncs_addstr(Screen_t *s, int x, int y, const char *fmt, ...)
 {
 	va_list ap;
 	char	buffer[256];
@@ -175,6 +175,13 @@ int ncs_render_data(Screen_t *s, char *p)
 	}
 
 	wrefresh(s->wd);
+
+	return 0;
+}
+
+int ncs_clear(Screen_t *s)
+{
+	werase(s->wd);
 
 	return 0;
 }

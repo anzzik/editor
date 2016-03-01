@@ -112,7 +112,7 @@ int buf_chunk_add(Buffer_t *b, BChunk_t *bc)
 	return 0;
 }
 
-void buf_chunk_close(Buffer_t* b, BChunk_t *bc)
+void buf_chunk_free(Buffer_t* b, BChunk_t *bc)
 {
 	if (!bc)
 		return;
@@ -130,14 +130,14 @@ void buf_chunk_close(Buffer_t* b, BChunk_t *bc)
 	free(bc);
 }
 
-void buf_close(Buffer_t *b)
+void buf_free(Buffer_t *b)
 {
-	BChunk_t *bc, *tmp;
+	BChunk_t *bc;
 
 	bc = b->chk_start;
 	while (bc)
 	{
-		buf_chunk_close(b, bc);
+		buf_chunk_free(b, bc);
 
 		bc = b->chk_start;
 	}
@@ -161,7 +161,7 @@ int buf_load_file(Buffer_t *b, const char *filename)
 	b->fp = fopen(filename, "r");
 	if (!b->fp)
 	{
-		lprintf(LL_ERROR, "Failed opening file %s", filename);
+		lprintf(LL_ERROR, "Failed opening file %s|", filename);
 
 		return -1;
 	}
@@ -283,6 +283,26 @@ int buf_add_ch(Buffer_t *b, char c)
 	bc->buf[offset] = c;
 
 	b->c_pos++;
+
+	return 0;
+}
+
+int buf_clear(Buffer_t *b)
+{
+	BChunk_t *bc;
+
+	bc = b->chk_start->next;
+
+	while (bc)
+	{
+		buf_chunk_free(b, bc);
+		bc = b->chk_start->next;
+	}
+
+	memset(b->chk_start->buf, 0, sizeof(b->chk_start->buf));
+
+	b->c_pos = 0;
+	b->tot_sz = BCHUNK_SZ;
 
 	return 0;
 }

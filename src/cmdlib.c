@@ -35,13 +35,11 @@ CmdHook_t *cmdlib_get_lib()
 	return &cmdlib[0];
 }
 
-
 int cmdlib_file_load_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
 	BChunk_t  *bc;
 	int r;
-	char *cmd_buf;
 	char def_fname[128];
 
 	ctx = uptr;
@@ -51,17 +49,18 @@ int cmdlib_file_load_cb(void *uptr, char *args)
 	else
 		strncpy(def_fname, "scratch", sizeof(def_fname));
 	
-	cmd_buf = buf_get_content(ctx->cmd_buffer);
+	ncs_clear(ctx->scr);
 
 	r = buf_load_file(ctx->c_buffer, def_fname);
 	if (r < 0)
 	{
-		lprintf(LL_ERROR, "Failed to load buffer from file: %s", ctx->c_buffer->filename);
+		lprintf(LL_ERROR, "Failed to load buffer from file: %s|", ctx->c_buffer->filename);
 		return r;
 	}
 
 	ncs_set_cursor(ctx->scr, 0, 0);
 
+	ncs_clear(ctx->scr);
 	bc = ctx->c_buffer->chk_start;
 	while (bc)
 	{
@@ -89,7 +88,7 @@ int cmdlib_file_save_cb(void *uptr, char *args)
 	if (r < 0)
 	{
 		lprintf(LL_ERROR, "Failed to save buffer to the file", r);
-		ed_set_edmode(ctx, ED_QUITTING);
+		ed_set_mode(ctx, ED_QUITTING);
 	}
 	else
 		lprintf(LL_DEBUG, "%d bytes written to file", r);
@@ -149,11 +148,12 @@ int cmdlib_cmd_line_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
-	ncs_set_cursor(ctx->scr, 0, ctx->scr->h - 2);
+	ncs_set_cursor(ctx->scr, 0, ctx->scr->h - 1);
 	ncs_addch(ctx->scr, ':');
+	buf_add_ch(ctx->cmd_buffer, ':');
 	ncs_cursor_rt(ctx->scr, 1);
 
-	ed_set_mode(ctx, CMD_MODE);
+	ed_set_mode(ctx, ED_CMD_MODE);
 
 	return 0;
 }
@@ -163,7 +163,7 @@ int cmdlib_main_quit_cb(void *uptr, char *args)
 	Context_t *ctx;
 
 	ctx = uptr;
-	ed_set_edmode(ctx, ED_QUITTING);
+	ed_set_mode(ctx, ED_QUITTING);
 
 	return 0;
 }

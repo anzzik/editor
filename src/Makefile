@@ -5,7 +5,7 @@ bin_dir = $(root_dir)bin/
 binary = $(bin_dir)test
 
 CC = gcc
-CFLAGS = -O0 -g -Wall -D_GNU_SOURCE=1 -D_REENTRANT -I ./
+CFLAGS = -O0 -g -Wall -D_GNU_SOURCE=1 -D_REENTRANT -I ./memory
 LDFLAGS = 
 LIBS = -lcurses
 
@@ -13,12 +13,11 @@ sources = \
 	main.c \
 	editor.c \
 	screen.c \
-	input.c \
-	input_cmd.c \
 	buffer.c \
 	list.c \
 	cmdlib.c \
 	log.c \
+	memory_tracer.c \
 
 OBJS = $(sources:%.c=$(obj_dir)%.o)
 deps = $(sources:%.c=$(deps_dir)%.d)

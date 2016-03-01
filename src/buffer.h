@@ -43,13 +43,14 @@ struct Buffer_s
 Buffer_t *buf_new(char *filename);
 BChunk_t *buf_chunk_new(Buffer_t *b);
 int	  buf_chunk_add(Buffer_t *b, BChunk_t *bc);
-void	  buf_chunk_close(Buffer_t* b, BChunk_t *bc);
+void	  buf_chunk_free(Buffer_t* b, BChunk_t *bc);
 char	 *buf_get_content(Buffer_t *b);
-void	  buf_close(Buffer_t *b);
+void	  buf_free(Buffer_t *b);
 int	  buf_load_file(Buffer_t *b, const char *filename);
 int	  buf_save_file(Buffer_t *b, const char *filename);
 int	  buf_set_cursor(Buffer_t *b, int n);
 int	  buf_add_ch(Buffer_t *b, char c);
+int	  buf_clear(Buffer_t *b);
 
 #endif
 

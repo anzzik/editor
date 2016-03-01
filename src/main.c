@@ -9,6 +9,7 @@ int main(void)
 	ed_init(ctx);
 	ed_loop(ctx);
 	ed_quit(ctx);
+	ed_free(ctx);
 
 	return 0;
 }
