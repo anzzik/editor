@@ -24,17 +24,30 @@
 #include "buffer.h"
 #include "log.h"
 
+#define LI_CHUNK_SZ 16 
+
 Buffer_t *buf_new(char *filename)
 {
 	Buffer_t *b;
 	BChunk_t *bc;
+	int i = 0;
 
 	b = malloc(sizeof(Buffer_t));
 	b->filename = filename;
 	b->c_pos = 0;
 	b->c_line = 0;
 	b->linecount = 0;
-	b->linelns = NULL;
+
+	b->l_info = malloc(LI_CHUNK_SZ * sizeof(LineInfo_t));
+
+	for (i = 0; i < LI_CHUNK_SZ; i++)
+	{
+		b->l_info[i].p = NULL;
+		b->l_info[i].n = 0;
+	}
+
+	b->li_count = 1;
+	
 	b->fp = NULL;
 
 	lprintf(LL_DEBUG, "Created a new buffer: %s", b->filename);
@@ -61,6 +74,26 @@ BChunk_t *buf_chunk_new(Buffer_t *b)
 	lprintf(LL_DEBUG, "Created a new chunk (%zi bytes) to buffer %s", sizeof(bc->buf), b->filename);
 
 	return bc;
+}
+
+int buf_add_li_chunks(Buffer_t *b, int n)
+{
+	lprintf(LL_DEBUG, "Starting to add chunks");
+	LineInfo_t *li;
+
+	li = realloc(b->l_info, (b->li_count + n) * LI_CHUNK_SZ * sizeof(LineInfo_t));
+
+	if (li == NULL)
+	{
+		lprintf(LL_CRITICAL, "realloc failed to expand the mem area");
+		return -1;
+	}
+	
+	b->li_count += n;
+	b->l_info = li;
+	lprintf(LL_DEBUG, "%d chunks added successfully", n);
+
+	return 0;
 }
 
 char *buf_get_content(Buffer_t *b)
@@ -153,15 +186,15 @@ void buf_free(Buffer_t *b)
 
 	lprintf(LL_DEBUG, "Closed the buffer with filename %s", b->filename);
 
-	if (b->linelns != NULL)
-		free(b->linelns);
+	if (b->l_info != NULL)
+		free(b->l_info);
 
 	free(b);
 }
 
 int buf_load_file(Buffer_t *b, const char *filename)
 {
-	int	   r, i, j, read_b, len, newline;
+	int	   r, i, j, read_b, l_len, newline;
 	char	   c;
 	BChunk_t  *bc;
 
@@ -201,15 +234,32 @@ int buf_load_file(Buffer_t *b, const char *filename)
 		read_b += r;
 	}
 
+
 	bc = b->chk_start;
+	l_len = 0;
 	while (bc)
 	{
 		i = 0;
 		c = bc->buf[i];
+		if (i == 0 && c != '\0')
+			b->linecount++;
+
 		while (c)
 		{
+			if (l_len == 0)
+				b->l_info[b->linecount - 1].p = &bc->buf[i];
+
+			l_len++;
+
 			if (c == '\n' || c == '\r')
+			{
+				b->l_info[b->linecount - 1].n = l_len;
+				l_len = 0;
 				b->linecount++;
+				
+				if (b->linecount >= b->li_count * LI_CHUNK_SZ)
+					buf_add_li_chunks(b, 1);
+			}
 
 			if (c == '\0')
 				break;
@@ -217,51 +267,6 @@ int buf_load_file(Buffer_t *b, const char *filename)
 			c = bc->buf[++i];
 
 			b->tot_len++;
-		}
-
-		bc = bc->next;
-	}
-
-	if (b->linelns != NULL)
-	{
-		lprintf(LL_CRITICAL, "Buffer %s not cleared before reuse!", b->filename);
-		return -1;
-	}
-
-	b->linelns = malloc(b->linecount * sizeof(int));
-	b->l_info =  malloc(b->linecount * sizeof(LineInfo_t));
-
-	newline = 1;
-	len = 0;
-	j = 0;
-
-	bc = b->chk_start;
-	while (bc)
-	{
-		i = 0;
-		c = bc->buf[i];
-		while (c)
-		{
-			if (newline == 1)
-				b->l_info[j].p = &bc->buf[i];
-
-			if (c == '\n' || c == '\r')
-			{
-				b->l_info[j].n = len;
-				b->linelns[j] = len;
-				len = 0;
-				newline = 1;
-
-				j++;
-			}
-
-			if (c == '\0')
-				break;
-
-			c = bc->buf[++i];
-			len++;
-
-			newline = 0;
 		}
 
 		bc = bc->next;
@@ -379,8 +384,6 @@ int buf_clear(Buffer_t *b)
 
 	b->c_pos = 0;
 	b->linecount = 0;
-	free(b->linelns);
-	b->linelns = NULL;
 	b->tot_sz = BCHUNK_SZ;
 
 	return 0;

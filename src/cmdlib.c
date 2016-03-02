@@ -1,4 +1,6 @@
 #include <string.h>
+#include <stdlib.h>
+
 #include "cmdlib.h"
 #include "log.h"
 
@@ -131,10 +133,10 @@ int cmdlib_cursor_right_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
-	lprintf(LL_DEBUG, "c_pos: %d, r_x: %d, line length: %d", ctx->c_buffer->tot_len,
-			ctx->scr->r_x, ctx->c_buffer->linelns[ctx->c_buffer->c_line]);
+	if (!ctx->c_buffer->l_info)
+		return 0;
 
-	if (ctx->scr->r_x < ctx->c_buffer->linelns[ctx->c_buffer->c_line])
+	if (ctx->scr->r_x < ctx->c_buffer->l_info[ctx->c_buffer->c_line].n)
 	{
 		ncs_cursor_rt(ctx->scr, 1);
 	}

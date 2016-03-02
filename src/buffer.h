@@ -19,7 +19,7 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#define BCHUNK_SZ 128
+#define BCHUNK_SZ 64 
 
 typedef struct BChunk_s BChunk_t;
 struct BChunk_s
@@ -43,7 +43,7 @@ struct Buffer_s
 	int	    c_pos;
 	int	    c_line;
 	int	    linecount;
-	int	   *linelns;
+	int	    li_count;
 	size_t      tot_sz;
 	size_t      tot_len;
 	char	   *name;
@@ -54,6 +54,7 @@ struct Buffer_s
 
 Buffer_t *buf_new(char *filename);
 BChunk_t *buf_chunk_new(Buffer_t *b);
+int 	  buf_add_li_chunks(Buffer_t *b, int n);
 int	  buf_chunk_add(Buffer_t *b, BChunk_t *bc);
 void	  buf_chunk_free(Buffer_t* b, BChunk_t *bc);
 char	 *buf_get_content(Buffer_t *b);
