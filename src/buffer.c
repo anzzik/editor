@@ -32,6 +32,9 @@ Buffer_t *buf_new(char *filename)
 	b = malloc(sizeof(Buffer_t));
 	b->filename = filename;
 	b->c_pos = 0;
+	b->c_line = 0;
+	b->linecount = 0;
+	b->linelns = NULL;
 	b->fp = NULL;
 
 	lprintf(LL_DEBUG, "Created a new buffer: %s", b->filename);
@@ -40,6 +43,7 @@ Buffer_t *buf_new(char *filename)
 	buf_chunk_add(b, bc);
 
 	b->tot_sz = BCHUNK_SZ;
+	b->tot_len = 0;
 	
 	return b;
 }
@@ -149,12 +153,16 @@ void buf_free(Buffer_t *b)
 
 	lprintf(LL_DEBUG, "Closed the buffer with filename %s", b->filename);
 
+	if (b->linelns != NULL)
+		free(b->linelns);
+
 	free(b);
 }
 
 int buf_load_file(Buffer_t *b, const char *filename)
 {
-	int	   r, read_b;
+	int	   r, i, j, read_b, len, newline;
+	char	   c;
 	BChunk_t  *bc;
 
 	if (b->fp)
@@ -191,10 +199,76 @@ int buf_load_file(Buffer_t *b, const char *filename)
 			break;
 		
 		read_b += r;
-
 	}
 
-	lprintf(LL_ERROR, "%d bytes read to the file: %s", read_b, filename);
+	bc = b->chk_start;
+	while (bc)
+	{
+		i = 0;
+		c = bc->buf[i];
+		while (c)
+		{
+			if (c == '\n' || c == '\r')
+				b->linecount++;
+
+			if (c == '\0')
+				break;
+
+			c = bc->buf[++i];
+
+			b->tot_len++;
+		}
+
+		bc = bc->next;
+	}
+
+	if (b->linelns != NULL)
+	{
+		lprintf(LL_CRITICAL, "Buffer %s not cleared before reuse!", b->filename);
+		return -1;
+	}
+
+	b->linelns = malloc(b->linecount * sizeof(int));
+	b->l_info =  malloc(b->linecount * sizeof(LineInfo_t));
+
+	newline = 1;
+	len = 0;
+	j = 0;
+
+	bc = b->chk_start;
+	while (bc)
+	{
+		i = 0;
+		c = bc->buf[i];
+		while (c)
+		{
+			if (newline == 1)
+				b->l_info[j].p = &bc->buf[i];
+
+			if (c == '\n' || c == '\r')
+			{
+				b->l_info[j].n = len;
+				b->linelns[j] = len;
+				len = 0;
+				newline = 1;
+
+				j++;
+			}
+
+			if (c == '\0')
+				break;
+
+			c = bc->buf[++i];
+			len++;
+
+			newline = 0;
+		}
+
+		bc = bc->next;
+	}
+
+	lprintf(LL_DEBUG, "Buffer line count: %d", b->linecount);
+	lprintf(LL_DEBUG, "%d bytes read from the file: %s", read_b, filename);
 
 	return read_b;
 }
@@ -304,6 +378,9 @@ int buf_clear(Buffer_t *b)
 	memset(b->chk_start->buf, 0, sizeof(b->chk_start->buf));
 
 	b->c_pos = 0;
+	b->linecount = 0;
+	free(b->linelns);
+	b->linelns = NULL;
 	b->tot_sz = BCHUNK_SZ;
 
 	return 0;

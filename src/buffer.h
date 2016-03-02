@@ -29,15 +29,27 @@ struct BChunk_s
 	BChunk_t *next, *prev;
 };
 
+typedef struct LineInfo_s LineInfo_t;
+struct LineInfo_s
+{
+	char *p;
+	int   n;
+};
+
 typedef struct Buffer_s Buffer_t;
 struct Buffer_s
 {
 	FILE	   *fp;
 	int	    c_pos;
+	int	    c_line;
+	int	    linecount;
+	int	   *linelns;
 	size_t      tot_sz;
+	size_t      tot_len;
 	char	   *name;
 	BChunk_t   *chk_start;
 	char	   *filename;
+	LineInfo_t *l_info;
 };
 
 Buffer_t *buf_new(char *filename);

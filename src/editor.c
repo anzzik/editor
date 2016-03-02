@@ -402,9 +402,19 @@ int ed_loop(Context_t *ctx)
 				break;
 
 			case ED_CMD_MODE:
+				if (c == 27)
+				{
+					ncs_rm_current_line(ctx->scr);
+					ncs_set_cursor(ctx->scr, 0, 0);
+					buf_clear(ctx->cmd_buffer);
+					ed_set_mode(ctx, ED_HOTKEY_MODE);
+
+					break;
+				}
 
 				if (c == '\r' || c == '\n')
 				{
+					ncs_rm_current_line(ctx->scr);
 					buf_add_ch(ctx->cmd_buffer, '\0');
 					ed_parse_cmd_buf(ctx);
 
@@ -438,7 +448,7 @@ int ed_loop(Context_t *ctx)
 
 				if (c == '\r' || c == '\n')
 				{
-					ncs_set_cursor(ctx->scr, 0, ctx->scr->c_y + 1);
+					ncs_set_cursor(ctx->scr, 0, ctx->scr->r_y + 1);
 				}
 
 				if (c == '\t')

@@ -48,6 +48,7 @@ int cmdlib_file_load_cb(void *uptr, char *args)
 	ncs_set_cursor(ctx->scr, 0, 0);
 
 	free(c);
+
 	return 0;
 }
 
@@ -78,6 +79,14 @@ int cmdlib_cursor_up_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
+	if (ctx->c_buffer->c_line == 0)
+		return 0;
+
+	lprintf(LL_DEBUG, "up, r_y: %d", ctx->scr->r_y);
+	if (ctx->scr->r_y == 0)
+		ncs_scroll(ctx->scr, -1);
+
+	ctx->c_buffer->c_line--;
 	ncs_cursor_up(ctx->scr, 1);
 
 	return 0;
@@ -89,6 +98,17 @@ int cmdlib_cursor_down_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
+	lprintf(LL_DEBUG, "down, r_y: %d", ctx->scr->r_y);
+	if (ctx->c_buffer->c_line == ctx->c_buffer->linecount - 1)
+		return 0;
+
+	if (ctx->c_buffer->c_line >= ctx->scr->h - 1)
+	{
+		lprintf(LL_DEBUG, "Scrolling down");
+		ncs_scroll(ctx->scr, 1);
+	}
+
+	ctx->c_buffer->c_line++;
 	ncs_cursor_dw(ctx->scr, 1);
 
 	return 0;
@@ -111,7 +131,13 @@ int cmdlib_cursor_right_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
-	ncs_cursor_rt(ctx->scr, 1);
+	lprintf(LL_DEBUG, "c_pos: %d, r_x: %d, line length: %d", ctx->c_buffer->tot_len,
+			ctx->scr->r_x, ctx->c_buffer->linelns[ctx->c_buffer->c_line]);
+
+	if (ctx->scr->r_x < ctx->c_buffer->linelns[ctx->c_buffer->c_line])
+	{
+		ncs_cursor_rt(ctx->scr, 1);
+	}
 
 	return 0;
 }

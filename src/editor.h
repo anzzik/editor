@@ -63,12 +63,10 @@ struct CmdLib_s
 typedef struct Context_s Context_t;
 struct Context_s
 {
-	char	     pending_info[128];
 	EdMode_t     mode;
 	Buffer_t    *c_buffer;
 	Buffer_t    *cmd_buffer;
 	Screen_t    *scr;
-//	CmdLib_t    *cmdlib;
 };
 
 typedef struct Cmd_s Cmd_t;
