@@ -79,6 +79,26 @@ CmdType_t ed_cmd_get_type(const char *cmd_id)
 	return -1;
 }
 
+int ed_cmd_set(Cmd_t *cmd, char *key, char *value)
+{
+	if (!strcmp(key, "id"))
+	{
+		snprintf(cmd->cmd_id, sizeof(cmd->cmd_id), "%s", value);
+	}
+
+	if (!strcmp(key, "cmd"))
+	{
+		snprintf(cmd->cmd_str, sizeof(cmd->cmd_str), "%s", value);
+	}
+
+	if (!strcmp(key, "hotkey"))
+	{
+		snprintf(cmd->cmd_hk, sizeof(cmd->cmd_hk), "%s", value);
+	}
+
+	return 0;
+}
+
 Cmd_t *ed_get_cmd(char *cmd)
 {
 	int i;
@@ -217,22 +237,34 @@ int ed_load_cmd_cfg(Context_t *ctx, const char *cfgfile)
 		if (isspace(c))
 		{
 			c = buf[++i];
+
 			continue;
 		}
 
-		switch (c)
+		if (c == '{')
 		{
-			case '{': 
-				memset(tmp, 0, sizeof(tmp));
-				break;
+			memset(tmp, 0, sizeof(tmp));
+			c = buf[++i];
 
-			case '}':
-				ed_cmd_parse_cfg(ctx, tmp);
-
-			default:
-				tmp[strlen(tmp)] = c;
+			continue;
 		}
 
+		if (c == '}')
+		{
+			ed_cmd_parse_cfg(ctx, tmp, strlen(tmp));
+			c = buf[++i];
+
+			continue;
+		}
+
+		if (strlen(tmp) + 2 > sizeof(tmp))
+		{
+			lprintf(LL_CRITICAL, "%s has too long strings in it", cfgfile);
+			
+			break;
+		}
+
+		tmp[strlen(tmp)] = c;
 		c = buf[++i];
 	}
 
@@ -241,48 +273,66 @@ int ed_load_cmd_cfg(Context_t *ctx, const char *cfgfile)
 	return 0;
 } 
 
-int ed_cmd_parse_cfg(Context_t *ctx, char *conf_str)
+int ed_cmd_parse_cfg(Context_t *ctx, char *conf_str, int n)
 {
-	CmdType_t type;
-	char id[128];
-	char cmd_str[256];
-	char tmp[20];
-	char hotkey[20];
+	CmdType_t   type;
+	Cmd_t	    cmd;
+	int	    i, cfgline_c;
+	char	    c;
+	char	   *cfg_str, *tok, *key, *value;
+	char      **cfglines;
+	       
+	cfg_str	= malloc(n + 1);
+	snprintf(cfg_str, n + 1, "%s", conf_str);
 
-	sscanf(conf_str, "%[^';'];%[^';'];%[^';'];", id, cmd_str, hotkey);
-	//printf("Creating cmd with id: %s and cmd_str: %s and hotkey: %s\n", id, cmd_str, hotkey);
+	cfgline_c = 0;
 
-	memset(tmp, 0, sizeof(tmp));
-	memcpy(tmp, id, 3);
-
-	if (strcmp(tmp, "id="))
+	i = 0;
+	for (i = 0; i < strlen(cfg_str); i++)
 	{
-		lprintf(LL_ERROR, "id wrong\n");
-		return -1;
+		c = cfg_str[i];
+		if (c == '=')
+			cfgline_c++;
 	}
 
-	memset(tmp, 0, sizeof(tmp));
-	memcpy(tmp, cmd_str, 4);
+	cfglines = malloc(cfgline_c * sizeof(char*));
 
-	if (strcmp(tmp, "cmd="))
+	i = 0;
+	tok = strtok(cfg_str, ";");
+	while (tok != NULL)
 	{
-		lprintf(LL_ERROR, "cmd_str wrong\n");
-		return -1;
+		cfglines[i] = malloc(strlen(tok) + 1);
+		snprintf(cfglines[i], strlen(tok) + 1, "%s", tok);
+
+		tok = strtok(NULL, ";");
+		i++;
 	}
 
-	memset(tmp, 0, sizeof(tmp));
-	memcpy(tmp, hotkey, 7);
-
-	if (strcmp(tmp, "hotkey="))
+	for (i = 0; i < cfgline_c; i++)
 	{
-		lprintf(LL_ERROR, "hotkey wrong\n");
-		return -1;
+		key = strtok(cfglines[i], "=");
+		value = strtok(NULL, "=");
+
+		ed_cmd_set(&cmd, key, value);
 	}
 
-	type = ed_cmd_get_type(id + 3);
+	type = ed_cmd_get_type(cmd.cmd_id);
+	cmd.cmd_type = type;
 
-	strncpy(cmds[type].cmd_str, cmd_str + 4, sizeof(cmds[type].cmd_str));
-	strncpy(cmds[type].cmd_hk,  hotkey  + 7, sizeof(cmds[type].cmd_str));
+	for (i = 0; i < CMD_COUNT; i++)
+	{
+		if (cmds[i].cmd_type == type)
+		{
+			memcpy(&cmds[i], &cmd, sizeof(cmds[i]));
+			break;
+		}
+	}
+
+	for (i = 0; i < cfgline_c; i++)
+		free(cfglines[i]);
+
+	free(cfglines);
+	free(cfg_str);
 
 	return 0;
 }
@@ -421,7 +471,7 @@ int ed_parse_cmd_buf(Context_t *ctx)
 
 	cmdline = buf_get_content(ctx->cmd_buffer);
 	c = malloc(strlen(cmdline) + 1);
-	strncpy(c, cmdline, strlen(cmdline) + 1);
+	snprintf(c, strlen(cmdline)+1, "%s", cmdline);
 
 	tok = strtok(c, " ");
 

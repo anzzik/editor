@@ -14,7 +14,6 @@ sources = \
 	editor.c \
 	screen.c \
 	buffer.c \
-	list.c \
 	cmdlib.c \
 	log.c \
 

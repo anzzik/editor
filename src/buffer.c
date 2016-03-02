@@ -66,12 +66,12 @@ char *buf_get_content(Buffer_t *b)
 	char	 *s;
 
 	copied = 0;
-	s = malloc(b->c_pos + 1);
+	s = malloc(b->tot_sz);
 
 	bc = b->chk_start;
 	while (bc)
 	{
-		strncpy(s + copied, bc->buf, strlen(bc->buf));
+		snprintf(s + copied, (b->tot_sz - copied), "%s", bc->buf);
 
 		copied += strlen(bc->buf);
 		bc = bc->next;

@@ -37,7 +37,7 @@ struct Buffer_s
 	size_t      tot_sz;
 	char	   *name;
 	BChunk_t   *chk_start;
-	char *filename;
+	char	   *filename;
 };
 
 Buffer_t *buf_new(char *filename);

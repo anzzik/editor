@@ -14,22 +14,6 @@ CmdHook_t cmdlib[] = {
 	{ CMD_COUNT,   NULL }
 };
 
-/*CmdLib_t r_cmdlib = {
-	cmdlib_file_load_cb,
-	cmdlib_file_save_cb,
-	cmdlib_main_quit_cb,
-	cmdlib_cursor_up_cb,
-	cmdlib_cursor_down_cb,
-	cmdlib_cursor_left_cb,
-	cmdlib_cursor_right_cb,
-	cmdlib_cmd_line_cb
-};
-
-CmdLib_t *cmdlib_get_rlib()
-{
-	return &r_cmdlib;
-}*/
-
 CmdHook_t *cmdlib_get_lib()
 {
 	return &cmdlib[0];
@@ -37,41 +21,33 @@ CmdHook_t *cmdlib_get_lib()
 
 int cmdlib_file_load_cb(void *uptr, char *args)
 {
-	Context_t *ctx;
-	BChunk_t  *bc;
-	int r;
-	char def_fname[128];
+	Context_t    *ctx;
+	int	      r;
+	char	     *filename;
+	char	     *c;
 
 	ctx = uptr;
+	filename = args;
 
-	memset(def_fname, '\0', sizeof(def_fname));
-	if (args)
-		strncpy(def_fname, args, sizeof(def_fname));
-	else
-		strncpy(def_fname, "scratch", sizeof(def_fname));
-	
 	ncs_clear(ctx->scr);
 	buf_clear(ctx->c_buffer);
 
-	lprintf(LL_DEBUG, "Trying to open file: \"%s\"", def_fname);
-	r = buf_load_file(ctx->c_buffer, def_fname);
+	lprintf(LL_DEBUG, "Trying to open file: \"%s\"", filename);
+
+	r = buf_load_file(ctx->c_buffer, filename);
 	if (r < 0)
 	{
-		lprintf(LL_ERROR, "Failed to load buffer from file: %s|", ctx->c_buffer->filename);
+		lprintf(LL_ERROR, "Failed to load buffer from file: \"%s\"", ctx->c_buffer->filename);
 		return r;
 	}
 
-	ncs_set_cursor(ctx->scr, 0, 0);
-
-	bc = ctx->c_buffer->chk_start;
-	while (bc)
-	{
-		ncs_render_data(ctx->scr, bc->buf);
-		bc = bc->next;
-	}
+	c = buf_get_content(ctx->c_buffer);
 
 	ncs_set_cursor(ctx->scr, 0, 0);
+	ncs_render_data(ctx->scr, c);
+	ncs_set_cursor(ctx->scr, 0, 0);
 
+	free(c);
 	return 0;
 }
 
@@ -82,11 +58,7 @@ int cmdlib_file_save_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
-	if (args)
-		strncpy(ctx->c_buffer->filename, args, sizeof(*ctx->c_buffer->filename));
-
 	r = buf_save_file(ctx->c_buffer, ctx->c_buffer->filename);
-
 	if (r < 0)
 	{
 		lprintf(LL_ERROR, "Failed to save buffer to the file", r);
