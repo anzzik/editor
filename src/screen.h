@@ -47,6 +47,7 @@ void ncs_cursor_revert(Screen_t *s);
 void ncs_start_color(Screen_t *s, int cp);
 void ncs_stop_color(Screen_t *s, int cp);
 void ncs_max_xy(Screen_t *s, int *x, int *y);
+void ncs_xy(Screen_t *s, int *x, int *y);
 void ncs_cursor_lf(Screen_t *s, int n);
 void ncs_cursor_rt(Screen_t *s, int n);
 void ncs_cursor_up(Screen_t *s, int n);

@@ -24,7 +24,7 @@
 #include "buffer.h"
 #include "log.h"
 
-#define LI_CHUNK_SZ 16 
+#define LI_CHUNK_SZ 128 
 
 Buffer_t *buf_new(char *filename)
 {

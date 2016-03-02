@@ -76,6 +76,11 @@ void ncs_max_xy(Screen_t *s, int *x, int *y)
 	getmaxyx(s->wd, *y, *x);
 }
 
+void ncs_xy(Screen_t *s, int *x, int *y)
+{
+	getyx(s->wd, *y, *x);
+}
+
 void ncs_set_cursor(Screen_t *s, int x, int y)
 {
 	wmove(s->wd, y, x);
@@ -163,7 +168,8 @@ void ncs_addstr(Screen_t *s, int x, int y, const char *fmt, ...)
 
 int ncs_render_data(Screen_t *s, char *p)
 {
-	int  i;
+	int x, y;
+	/*int  i;
 	char c;
 
 	for (i = 0; i < strlen(p); i++)
@@ -185,9 +191,16 @@ int ncs_render_data(Screen_t *s, char *p)
 
 		ncs_addch(s, c);
 		ncs_cursor_rt(s, 1);
-	}
+	}*/
+
+	mvwaddnstr(s->wd, 0, 0, p, strlen(p));
+	//ncs_addstr(s, 0, 0, p);
 
 	wrefresh(s->wd);
+
+	ncs_xy(s, &x, &y);
+
+	lprintf(LL_DEBUG, "cursor at %d, %d", x, y);
 
 	return 0;
 }

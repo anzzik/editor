@@ -19,7 +19,7 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#define BCHUNK_SZ 64 
+#define BCHUNK_SZ 512 
 
 typedef struct BChunk_s BChunk_t;
 struct BChunk_s

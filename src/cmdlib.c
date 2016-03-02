@@ -45,9 +45,8 @@ int cmdlib_file_load_cb(void *uptr, char *args)
 
 	c = buf_get_content(ctx->c_buffer);
 
-	ncs_set_cursor(ctx->scr, 0, 0);
+
 	ncs_render_data(ctx->scr, c);
-	ncs_set_cursor(ctx->scr, 0, 0);
 
 	free(c);
 
@@ -70,8 +69,6 @@ int cmdlib_file_save_cb(void *uptr, char *args)
 	else
 		lprintf(LL_DEBUG, "%d bytes written to file", r);
 
-	ncs_set_cursor(ctx->scr, 0, 0);
-
 	return r;
 }
 
@@ -84,7 +81,6 @@ int cmdlib_cursor_up_cb(void *uptr, char *args)
 	if (ctx->c_buffer->c_line == 0)
 		return 0;
 
-	lprintf(LL_DEBUG, "up, r_y: %d", ctx->scr->r_y);
 	if (ctx->scr->r_y == 0)
 		ncs_scroll(ctx->scr, -1);
 
@@ -100,7 +96,6 @@ int cmdlib_cursor_down_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
-	lprintf(LL_DEBUG, "down, r_y: %d", ctx->scr->r_y);
 	if (ctx->c_buffer->c_line == ctx->c_buffer->linecount - 1)
 		return 0;
 
