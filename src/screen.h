@@ -42,6 +42,7 @@ struct Screen_s
 Screen_t *ncs_new();
 
 int ncs_init(Screen_t *s);
+void ncs_set_scrolling(Screen_t *s, int state);
 void ncs_set_cursor(Screen_t *s, int x, int y);
 void ncs_cursor_revert(Screen_t *s);
 void ncs_start_color(Screen_t *s, int cp);
@@ -50,12 +51,12 @@ void ncs_max_xy(Screen_t *s, int *x, int *y);
 void ncs_xy(Screen_t *s, int *x, int *y);
 void ncs_cursor_lf(Screen_t *s, int n);
 void ncs_cursor_rt(Screen_t *s, int n);
-void ncs_cursor_up(Screen_t *s, int n);
-void ncs_cursor_dw(Screen_t *s, int n);
+int ncs_cursor_up(Screen_t *s, int n);
+int ncs_cursor_dw(Screen_t *s, int n);
 void ncs_addch_xy(Screen_t *s, char c, int x, int y);
 void ncs_addch(Screen_t *s, char c);
 //void ncs_addstr(Screen_t *s, char *str, int x, int y, int n);
-void ncs_addstr(Screen_t *s, int x, int y, const char *fmt, ...);
+void ncs_addstrf(Screen_t *s, int x, int y, const char *fmt, ...);
 int ncs_render_data(Screen_t *s, char *p);
 int  ncs_scroll(Screen_t *s, int n);
 int  ncs_rm_current_line(Screen_t *s);

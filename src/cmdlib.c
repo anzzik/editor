@@ -45,8 +45,11 @@ int cmdlib_file_load_cb(void *uptr, char *args)
 
 	c = buf_get_content(ctx->c_buffer);
 
+	ncs_set_cursor(ctx->scr, 0, 0);
 
+	ncs_set_scrolling(ctx->scr, 0);
 	ncs_render_data(ctx->scr, c);
+	ncs_set_scrolling(ctx->scr, 1);
 
 	free(c);
 
@@ -75,17 +78,29 @@ int cmdlib_file_save_cb(void *uptr, char *args)
 int cmdlib_cursor_up_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
+	int scrl, n;
+	char *buffer, *p;
 
 	ctx = uptr;
 
 	if (ctx->c_buffer->c_line == 0)
 		return 0;
 
-	if (ctx->scr->r_y == 0)
-		ncs_scroll(ctx->scr, -1);
+	scrl = ncs_cursor_up(ctx->scr, 1);
+	if (scrl)
+	{
+		n = ctx->c_buffer->l_info[ctx->c_buffer->c_line - 1].n;
+		p = ctx->c_buffer->l_info[ctx->c_buffer->c_line - 1].p;
+
+		buffer = malloc((n + 1) * sizeof(char));
+		snprintf(buffer, n, "%s", p);
+		buffer[n] = '\0';
+
+		ncs_scroll(ctx->scr, scrl);
+		ncs_addstrf(ctx->scr, 0, 0, "%s", buffer);
+	}
 
 	ctx->c_buffer->c_line--;
-	ncs_cursor_up(ctx->scr, 1);
 
 	return 0;
 }
@@ -93,20 +108,32 @@ int cmdlib_cursor_up_cb(void *uptr, char *args)
 int cmdlib_cursor_down_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
+	int scrl, n;
+	char *buffer, *p;
 
 	ctx = uptr;
 
 	if (ctx->c_buffer->c_line == ctx->c_buffer->linecount - 1)
 		return 0;
 
-	if (ctx->c_buffer->c_line >= ctx->scr->h - 1)
+	scrl = ncs_cursor_dw(ctx->scr, 1);
+	if (scrl)
 	{
-		lprintf(LL_DEBUG, "Scrolling down");
-		ncs_scroll(ctx->scr, 1);
+		n = ctx->c_buffer->l_info[ctx->c_buffer->c_line + 1].n;
+		p = ctx->c_buffer->l_info[ctx->c_buffer->c_line + 1].p;
+
+		buffer = malloc((n + 1) * sizeof(char));
+		snprintf(buffer, n, "%s", p);
+		buffer[n] = '\0';
+
+		ncs_scroll(ctx->scr, scrl);
+		ncs_addstrf(ctx->scr, 0, ctx->scr->h - 3, "%s", buffer);
+
+		free(buffer);
+
 	}
 
 	ctx->c_buffer->c_line++;
-	ncs_cursor_dw(ctx->scr, 1);
 
 	return 0;
 }

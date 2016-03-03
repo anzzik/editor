@@ -38,7 +38,7 @@ Buffer_t *buf_new(char *filename)
 	b->c_line = 0;
 	b->linecount = 0;
 
-	b->l_info = malloc(LI_CHUNK_SZ * sizeof(LineInfo_t));
+	b->l_info = calloc(LI_CHUNK_SZ, sizeof(LineInfo_t));
 
 	for (i = 0; i < LI_CHUNK_SZ; i++)
 	{
@@ -241,7 +241,7 @@ int buf_load_file(Buffer_t *b, const char *filename)
 	{
 		i = 0;
 		c = bc->buf[i];
-		if (i == 0 && c != '\0')
+		if (i == 0 && c != '\0' && bc == b->chk_start)
 			b->linecount++;
 
 		while (c)
@@ -265,17 +265,40 @@ int buf_load_file(Buffer_t *b, const char *filename)
 				break;
 
 			c = bc->buf[++i];
-
 			b->tot_len++;
 		}
 
 		bc = bc->next;
 	}
 
+	buf_dump_lineinfo(b);
+
+
 	lprintf(LL_DEBUG, "Buffer line count: %d", b->linecount);
 	lprintf(LL_DEBUG, "%d bytes read from the file: %s", read_b, filename);
 
 	return read_b;
+}
+
+void buf_dump_lineinfo(Buffer_t *b)
+{
+	LineInfo_t *l;
+	int i;
+
+	i = 0;
+
+	for (i = 0; i < 128; i++)
+	{
+		l = &b->l_info[i];
+		lprintf(LL_DEBUG, "l_len:%d", l->n);
+	}
+
+	while (l->n > 0)
+	{
+//		lprintf(LL_DEBUG, "l_len:%d", l->n);
+
+		l = &b->l_info[++i];
+	}
 }
 
 int buf_save_file(Buffer_t *b, const char *filename)

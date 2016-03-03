@@ -421,7 +421,7 @@ int ed_loop(Context_t *ctx)
 					buf_clear(ctx->cmd_buffer);
 
 					ed_set_mode(ctx, ED_HOTKEY_MODE);
-					ncs_set_cursor(ctx->scr, 0, 0);
+					//ncs_set_cursor(ctx->scr, 0, 0);
 					break;
 				}
 
@@ -516,8 +516,8 @@ void ed_info(Context_t *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	ncs_start_color(ctx->scr, 2);
-	ncs_addstr(ctx->scr, 0, ctx->scr->h - 2, "%*s", 20, " ");
-	ncs_addstr(ctx->scr, 0, ctx->scr->h - 2, "%s", buffer);
+	ncs_addstrf(ctx->scr, 0, ctx->scr->h - 2, "%*s", 20, " ");
+	ncs_addstrf(ctx->scr, 0, ctx->scr->h - 2, "%s", buffer);
 	ncs_stop_color(ctx->scr, 2);
 
 	ncs_cursor_revert(ctx->scr);

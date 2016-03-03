@@ -60,6 +60,8 @@ void	  buf_chunk_free(Buffer_t* b, BChunk_t *bc);
 char	 *buf_get_content(Buffer_t *b);
 void	  buf_free(Buffer_t *b);
 int	  buf_load_file(Buffer_t *b, const char *filename);
+
+void buf_dump_lineinfo(Buffer_t *b);
 int	  buf_save_file(Buffer_t *b, const char *filename);
 int	  buf_set_cursor(Buffer_t *b, int n);
 int	  buf_add_ch(Buffer_t *b, char c);

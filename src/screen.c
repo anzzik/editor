@@ -20,7 +20,6 @@
 #include <string.h>
 
 #include "screen.h"
-#include "log.h"
 
 Screen_t *ncs_new()
 {
@@ -52,6 +51,7 @@ int ncs_init(Screen_t *s)
 
 	keypad(s->wd, TRUE);
 	scrollok(s->wd, TRUE);
+	idlok(s->wd, TRUE);
 	nonl();
 	cbreak();
 	echo();
@@ -59,6 +59,14 @@ int ncs_init(Screen_t *s)
 	wrefresh(s->wd);
 
 	return 0;
+}
+
+void ncs_set_scrolling(Screen_t *s, int state)
+{
+	if (state)
+		scrollok(s->wd, TRUE);
+	else
+		scrollok(s->wd, FALSE);
 }
 
 void ncs_start_color(Screen_t *s, int cp)
@@ -83,8 +91,13 @@ void ncs_xy(Screen_t *s, int *x, int *y)
 
 void ncs_set_cursor(Screen_t *s, int x, int y)
 {
+	int xx, yy;
+	ncs_xy(s, &xx, &yy);
+
 	wmove(s->wd, y, x);
 	wrefresh(s->wd);
+
+	ncs_xy(s, &xx, &yy);
 
 	s->r_x = x;
 	s->r_y = y;
@@ -98,6 +111,8 @@ void ncs_cursor_revert(Screen_t *s)
 
 void ncs_cursor_lf(Screen_t *s, int n)
 {
+	int xx, yy;
+
 	if ((s->r_x - n) < 0)
 		n = s->r_x;
 
@@ -105,10 +120,14 @@ void ncs_cursor_lf(Screen_t *s, int n)
 
 	wmove(s->wd, s->r_y, s->r_x);
 	wrefresh(s->wd);
+
+	ncs_xy(s, &xx, &yy);
 }
 
 void ncs_cursor_rt(Screen_t *s, int n)
 {
+	int xx, yy;
+
 	if (s->r_x + n >= s->w)
 		n = s->w - s->r_x - 1;
 
@@ -116,28 +135,47 @@ void ncs_cursor_rt(Screen_t *s, int n)
 
 	wmove(s->wd, s->r_y, s->r_x);
 	wrefresh(s->wd);
+
+	ncs_xy(s, &xx, &yy);
 }
 
-void ncs_cursor_up(Screen_t *s, int n)
+int ncs_cursor_up(Screen_t *s, int n)
 {
-	if (s->r_y - n < 0)
-		n = s->r_y;
+	int scrl; 
+
+	scrl = 0;
 
 	s->r_y -= n;
+	if (s->r_y < 0)
+	{
+		scrl = s->r_y;
+		s->r_y = 0;
+	}
 
 	wmove(s->wd, s->r_y, s->r_x);
 	wrefresh(s->wd);
+
+	return scrl;
 }
 
-void ncs_cursor_dw(Screen_t *s, int n)
+int ncs_cursor_dw(Screen_t *s, int n)
 {
-	if (s->r_y + n >= s->h )
-		n = s->h - s->r_y;
+	int scrl; 
+
+	scrl = 0;
 
 	s->r_y += n;
+	if (s->r_y >= s->h - 3)
+	{
+		scrl = s->r_y - (s->h - 3);
+		s->r_y = s->h - 3;
+	}
 
 	wmove(s->wd, s->r_y, s->r_x);
 	wrefresh(s->wd);
+
+
+	return scrl;
 }
 
 void ncs_addch_xy(Screen_t *s, char c, int x, int y)
@@ -152,7 +190,7 @@ void ncs_addch(Screen_t *s, char c)
 	wrefresh(s->wd);
 }
 
-void ncs_addstr(Screen_t *s, int x, int y, const char *fmt, ...)
+void ncs_addstrf(Screen_t *s, int x, int y, const char *fmt, ...)
 {
 	va_list ap;
 	char	buffer[256];
@@ -169,38 +207,11 @@ void ncs_addstr(Screen_t *s, int x, int y, const char *fmt, ...)
 int ncs_render_data(Screen_t *s, char *p)
 {
 	int x, y;
-	/*int  i;
-	char c;
-
-	for (i = 0; i < strlen(p); i++)
-	{
-		c = p[i];
-		if (c == '\n')
-		{
-			ncs_set_cursor(s, 0, s->r_y + 1);
-
-			continue;
-		}
-
-		if (c == '\t')
-		{
-			ncs_cursor_rt(s, 8);
-
-			continue;
-		}
-
-		ncs_addch(s, c);
-		ncs_cursor_rt(s, 1);
-	}*/
 
 	mvwaddnstr(s->wd, 0, 0, p, strlen(p));
-	//ncs_addstr(s, 0, 0, p);
-
 	wrefresh(s->wd);
 
 	ncs_xy(s, &x, &y);
-
-	lprintf(LL_DEBUG, "cursor at %d, %d", x, y);
 
 	return 0;
 }
