@@ -51,6 +51,11 @@ int cmdlib_file_load_cb(void *uptr, char *args)
 	ncs_render_data(ctx->scr, c);
 	ncs_set_scrolling(ctx->scr, 1);
 
+	ncs_clr_line(ctx->scr, ctx->scr->h - 1);
+	ncs_clr_line(ctx->scr, ctx->scr->h - 2);
+
+	ncs_set_cursor(ctx->scr, 0, 0);
+
 	free(c);
 
 	return 0;
@@ -78,29 +83,37 @@ int cmdlib_file_save_cb(void *uptr, char *args)
 int cmdlib_cursor_up_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
-	int scrl, n;
-	char *buffer, *p;
+	int scrl;
+	char *buffer;
+	LineInfo_t *l;
 
 	ctx = uptr;
 
 	if (ctx->c_buffer->c_line == 0)
 		return 0;
 
+	ctx->c_buffer->c_line--;
+
+	l = &ctx->c_buffer->l_info[ctx->c_buffer->c_line];
+	if (l->n < ctx->scr->r_x)
+		ncs_set_cursor(ctx->scr, l->n, ctx->scr->r_y);
+
 	scrl = ncs_cursor_up(ctx->scr, 1);
 	if (scrl)
 	{
-		n = ctx->c_buffer->l_info[ctx->c_buffer->c_line - 1].n;
-		p = ctx->c_buffer->l_info[ctx->c_buffer->c_line - 1].p;
+		buffer = malloc((l->n + 1) * sizeof(char));
+		snprintf(buffer, l->n, "%s", l->p);
+		buffer[l->n] = '\0';
 
-		buffer = malloc((n + 1) * sizeof(char));
-		snprintf(buffer, n, "%s", p);
-		buffer[n] = '\0';
 
 		ncs_scroll(ctx->scr, scrl);
 		ncs_addstrf(ctx->scr, 0, 0, "%s", buffer);
-	}
 
-	ctx->c_buffer->c_line--;
+		ncs_clr_line(ctx->scr, ctx->scr->h - 1);
+		ncs_clr_line(ctx->scr, ctx->scr->h - 2);
+
+		free(buffer);
+	}
 
 	return 0;
 }
@@ -110,17 +123,24 @@ int cmdlib_cursor_down_cb(void *uptr, char *args)
 	Context_t *ctx;
 	int scrl, n;
 	char *buffer, *p;
+	LineInfo_t *l;
 
 	ctx = uptr;
 
-	if (ctx->c_buffer->c_line == ctx->c_buffer->linecount - 1)
+	if (ctx->c_buffer->c_line >= ctx->c_buffer->linecount - 1)
 		return 0;
+
+	ctx->c_buffer->c_line++;
+
+	l = &ctx->c_buffer->l_info[ctx->c_buffer->c_line];
+	if (l->n < ctx->scr->r_x)
+		ncs_set_cursor(ctx->scr, l->n, ctx->scr->r_y);
 
 	scrl = ncs_cursor_dw(ctx->scr, 1);
 	if (scrl)
 	{
-		n = ctx->c_buffer->l_info[ctx->c_buffer->c_line + 1].n;
-		p = ctx->c_buffer->l_info[ctx->c_buffer->c_line + 1].p;
+		n = ctx->c_buffer->l_info[ctx->c_buffer->c_line].n;
+		p = ctx->c_buffer->l_info[ctx->c_buffer->c_line].p;
 
 		buffer = malloc((n + 1) * sizeof(char));
 		snprintf(buffer, n, "%s", p);
@@ -129,11 +149,12 @@ int cmdlib_cursor_down_cb(void *uptr, char *args)
 		ncs_scroll(ctx->scr, scrl);
 		ncs_addstrf(ctx->scr, 0, ctx->scr->h - 3, "%s", buffer);
 
-		free(buffer);
+		ncs_clr_line(ctx->scr, ctx->scr->h - 1);
+		ncs_clr_line(ctx->scr, ctx->scr->h - 2);
 
+		free(buffer);
 	}
 
-	ctx->c_buffer->c_line++;
 
 	return 0;
 }
@@ -141,10 +162,11 @@ int cmdlib_cursor_down_cb(void *uptr, char *args)
 int cmdlib_cursor_left_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
+	char c;
 
 	ctx = uptr;
 
-	ncs_cursor_lf(ctx->scr, 1);
+	c = ncs_get_ch(ctx->scr, ctx->scr->r_x + 1, ctx->scr->r_y);
 
 	return 0;
 }
@@ -152,15 +174,22 @@ int cmdlib_cursor_left_cb(void *uptr, char *args)
 int cmdlib_cursor_right_cb(void *uptr, char *args)
 {
 	Context_t *ctx;
+	char c;
 
 	ctx = uptr;
 
 	if (!ctx->c_buffer->l_info)
 		return 0;
 
+	c = ncs_get_ch(ctx->scr, ctx->scr->r_x , ctx->scr->r_y);
 	if (ctx->scr->r_x < ctx->c_buffer->l_info[ctx->c_buffer->c_line].n)
 	{
-		ncs_cursor_rt(ctx->scr, 1);
+		lprintf(LL_DEBUG, "char: %d", (int)c);
+
+		if (c == '\t')
+			ncs_cursor_rt(ctx->scr, 8);
+		else
+			ncs_cursor_rt(ctx->scr, 1);
 	}
 
 	return 0;
@@ -187,6 +216,7 @@ int cmdlib_main_quit_cb(void *uptr, char *args)
 	Context_t *ctx;
 
 	ctx = uptr;
+
 	ed_set_mode(ctx, ED_QUITTING);
 
 	return 0;

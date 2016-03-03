@@ -446,20 +446,15 @@ int ed_loop(Context_t *ctx)
 					break;
 				}
 
-				if (c == '\r' || c == '\n')
-				{
-					ncs_set_cursor(ctx->scr, 0, ctx->scr->r_y + 1);
-				}
-
-				if (c == '\t')
-				{
-					ncs_cursor_rt(ctx->scr, 8);
-				}
-
 				buf_add_ch(ctx->c_buffer, c);
-
 				ncs_addch(ctx->scr, c);
-				ncs_cursor_rt(ctx->scr, 1);
+
+				if (c == '\r' || c == '\n')
+					ncs_set_cursor(ctx->scr, 0, ctx->scr->r_y + 1);
+				else if (c == '\t')
+					ncs_cursor_rt(ctx->scr, 8);
+				else
+					ncs_cursor_rt(ctx->scr, 1);
 
 				break;
 

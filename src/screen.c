@@ -224,9 +224,31 @@ int ncs_scroll(Screen_t *s, int n)
 	return 0;
 }
 
+char ncs_get_ch(Screen_t *s, int x, int y)
+{
+	chtype ch;
+
+	ch = mvwinch(s->wd, y, x);
+
+	return (char)(ch & A_CHARTEXT);
+}
+
 int ncs_rm_current_line(Screen_t *s)
 {
-	wdeleteln(s->wd);
+	wclrtoeol(s->wd);
+
+	return 0;
+}
+
+int ncs_clr_line(Screen_t *s, int y)
+{
+	wmove(s->wd, y, 0);
+	wrefresh(s->wd);
+
+	wclrtoeol(s->wd);
+
+	wmove(s->wd, s->r_y, s->r_x);
+	wrefresh(s->wd);
 
 	return 0;
 }

@@ -47,7 +47,6 @@ Buffer_t *buf_new(char *filename)
 	}
 
 	b->li_count = 1;
-	
 	b->fp = NULL;
 
 	lprintf(LL_DEBUG, "Created a new buffer: %s", b->filename);
@@ -144,8 +143,6 @@ int buf_chunk_add(Buffer_t *b, BChunk_t *bc)
 		}
 	}
 
-	lprintf(LL_DEBUG, "Added a new chunk to buffer with filename %s", b->filename);
-
 	b->tot_sz += BCHUNK_SZ;
 
 	return 0;
@@ -163,8 +160,6 @@ void buf_chunk_free(Buffer_t* b, BChunk_t *bc)
 
 	if (bc->next)
 		bc->next->prev = bc->prev;
-
-	lprintf(LL_DEBUG, "Chunk freed from the buffer with filename %s", b->filename);
 
 	free(bc);
 }
@@ -194,7 +189,7 @@ void buf_free(Buffer_t *b)
 
 int buf_load_file(Buffer_t *b, const char *filename)
 {
-	int	   r, i, j, read_b, l_len, newline;
+	int	   r, i, read_b, l_len;
 	char	   c;
 	BChunk_t  *bc;
 
@@ -235,8 +230,9 @@ int buf_load_file(Buffer_t *b, const char *filename)
 	}
 
 
-	bc = b->chk_start;
 	l_len = 0;
+
+	bc = b->chk_start;
 	while (bc)
 	{
 		i = 0;
@@ -271,9 +267,6 @@ int buf_load_file(Buffer_t *b, const char *filename)
 		bc = bc->next;
 	}
 
-	buf_dump_lineinfo(b);
-
-
 	lprintf(LL_DEBUG, "Buffer line count: %d", b->linecount);
 	lprintf(LL_DEBUG, "%d bytes read from the file: %s", read_b, filename);
 
@@ -287,15 +280,15 @@ void buf_dump_lineinfo(Buffer_t *b)
 
 	i = 0;
 
-	for (i = 0; i < 128; i++)
+/*	for (i = 0; i < 128; i++)
 	{
 		l = &b->l_info[i];
 		lprintf(LL_DEBUG, "l_len:%d", l->n);
 	}
-
+*/
 	while (l->n > 0)
 	{
-//		lprintf(LL_DEBUG, "l_len:%d", l->n);
+		lprintf(LL_DEBUG, "l_len:%d", l->n);
 
 		l = &b->l_info[++i];
 	}
@@ -384,9 +377,26 @@ int buf_add_ch(Buffer_t *b, char c)
 		chunk_n++;
 	}
 
-	bc->buf[offset] = c;
+	if (b->l_info[b->c_line].n == 0)
+		b->l_info[b->c_line].p = &bc->buf[b->c_pos]; 
 
+	b->l_info[b->c_line].n++;
+
+	if (c == '\r' || c == '\n' || b->tot_len == 0)
+	{
+		b->linecount++;
+		if (c == '\r' || c == '\n')
+			b->c_line++;
+	}
+
+	bc->buf[offset] = c;
 	b->c_pos++;
+	b->tot_len++;
+
+	if (c == 'd')
+	{
+		buf_dump_lineinfo(b);
+	}
 
 	return 0;
 }
