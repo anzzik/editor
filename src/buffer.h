@@ -24,7 +24,8 @@
 typedef struct BChunk_s BChunk_t;
 struct BChunk_s
 {
-	char	  buf[BCHUNK_SZ + 1];
+	char	  *buf;
+	size_t	  size;
 
 	BChunk_t *next, *prev;
 };
@@ -42,7 +43,7 @@ struct Buffer_s
 	FILE	   *fp;
 	int	    c_pos;
 	int	    c_line;
-	int	    linecount;
+	int	    eolcount;
 	int	    li_count;
 	size_t      tot_sz;
 	size_t      tot_len;
@@ -53,7 +54,8 @@ struct Buffer_s
 };
 
 Buffer_t *buf_new(char *filename);
-BChunk_t *buf_chunk_new(Buffer_t *b);
+BChunk_t *buf_chunk_new(Buffer_t *b, size_t size);
+int	  buf_li_add(Buffer_t *b, int n);
 int 	  buf_add_li_chunks(Buffer_t *b, int n);
 int	  buf_chunk_add(Buffer_t *b, BChunk_t *bc);
 void	  buf_chunk_free(Buffer_t* b, BChunk_t *bc);

@@ -24,63 +24,81 @@
 #include "buffer.h"
 #include "log.h"
 
-#define LI_CHUNK_SZ 128 
+#define LI_CHUNK_SZ 10
 
 Buffer_t *buf_new(char *filename)
 {
 	Buffer_t *b;
-	BChunk_t *bc;
-	int i = 0;
 
 	b = malloc(sizeof(Buffer_t));
 	b->filename = filename;
 	b->c_pos = 0;
 	b->c_line = 0;
-	b->linecount = 0;
+	b->eolcount = 0;
+	b->chk_start = NULL;
+	b->fp = NULL;
+	b->tot_sz  = 0;
+	b->tot_len = 0;
 
 	b->l_info = calloc(LI_CHUNK_SZ, sizeof(LineInfo_t));
+	b->li_count = LI_CHUNK_SZ;
 
-	for (i = 0; i < LI_CHUNK_SZ; i++)
+	lprintf(LL_DEBUG, "Created a new buffer: %s", b->filename);
+
+	return b;
+}
+
+BChunk_t *buf_chunk_new(Buffer_t *b, size_t size)
+{
+	BChunk_t *bc;
+
+	bc = malloc(sizeof(BChunk_t));
+	bc->buf = malloc(size + 1);
+
+	memset(bc->buf, '\0', size + 1);
+	bc->next = 0;
+	bc->prev = 0;
+	bc->size = size;
+
+	lprintf(LL_DEBUG, "Created a new chunk (%zi bytes) to buffer %s", size, b->filename);
+
+	return bc;
+}
+
+int buf_li_add(Buffer_t *b, int n)
+{
+	LineInfo_t *li;
+	int i;
+	BChunk_t *bc;
+
+	bc = b->chk_start;
+	lprintf(LL_DEBUG, "before li_add: %d", strlen(bc->buf));
+	li = realloc(b->l_info, (b->li_count + n) * sizeof(LineInfo_t));
+	if (li == NULL)
+	{
+		lprintf(LL_CRITICAL, "realloc failed to expand the mem area");
+		return -1;
+	}
+
+	for (i = b->li_count; i < b->li_count + n; i++)
 	{
 		b->l_info[i].p = NULL;
 		b->l_info[i].n = 0;
 	}
 
-	b->li_count = 1;
-	b->fp = NULL;
+	b->li_count += n;
 
-	lprintf(LL_DEBUG, "Created a new buffer: %s", b->filename);
+	lprintf(LL_DEBUG, "Allocated space for %d new lineinfos!", n);
 
-	bc = buf_chunk_new(b);
-	buf_chunk_add(b, bc);
-
-	b->tot_sz = BCHUNK_SZ;
-	b->tot_len = 0;
-	
-	return b;
-}
-
-BChunk_t *buf_chunk_new(Buffer_t *b)
-{
-	BChunk_t *bc;
-
-	bc = malloc(sizeof(BChunk_t));
-
-	memset(bc->buf, '\0', sizeof(bc->buf));
-	bc->next = 0;
-	bc->prev = 0;
-
-	lprintf(LL_DEBUG, "Created a new chunk (%zi bytes) to buffer %s", sizeof(bc->buf), b->filename);
-
-	return bc;
+	return 0;
 }
 
 int buf_add_li_chunks(Buffer_t *b, int n)
 {
-	lprintf(LL_DEBUG, "Starting to add chunks");
 	LineInfo_t *li;
 
-	li = realloc(b->l_info, (b->li_count + n) * LI_CHUNK_SZ * sizeof(LineInfo_t));
+	lprintf(LL_DEBUG, "Starting to add chunks");
+	li = realloc(b->l_info, (b->li_count + (n * LI_CHUNK_SZ)) * sizeof(LineInfo_t));
 
 	if (li == NULL)
 	{
@@ -88,7 +106,7 @@ int buf_add_li_chunks(Buffer_t *b, int n)
 		return -1;
 	}
 	
-	b->li_count += n;
+	b->li_count += (n * LI_CHUNK_SZ);
 	b->l_info = li;
 	lprintf(LL_DEBUG, "%d chunks added successfully", n);
 
@@ -143,7 +161,7 @@ int buf_chunk_add(Buffer_t *b, BChunk_t *bc)
 		}
 	}
 
-	b->tot_sz += BCHUNK_SZ;
+	b->tot_sz += bc->size;
 
 	return 0;
 }
@@ -161,6 +179,7 @@ void buf_chunk_free(Buffer_t* b, BChunk_t *bc)
 	if (bc->next)
 		bc->next->prev = bc->prev;
 
+	free(bc->buf);
 	free(bc);
 }
 
@@ -189,8 +208,9 @@ void buf_free(Buffer_t *b)
 
 int buf_load_file(Buffer_t *b, const char *filename)
 {
-	int	   r, i, read_b, l_len;
+	int	   r, i, read_b, l_len, c_line;
 	char	   c;
+	size_t	   f_sz;
 	BChunk_t  *bc;
 
 	if (b->fp)
@@ -204,70 +224,96 @@ int buf_load_file(Buffer_t *b, const char *filename)
 		return -1;
 	}
 
+	r = fseek(b->fp, 0, SEEK_END);
+	if (r)
+	{
+		lprintf(LL_ERROR, "fseek failed: %s\n", filename);
+		fclose(b->fp);
+
+		return -1;
+	}
+
+	f_sz = ftell(b->fp);
+	if (f_sz == -1L)
+	{
+		lprintf(LL_ERROR, "ftell failed: %s\n", filename);
+		fclose(b->fp);
+
+		return -1;
+	}
+
+	rewind(b->fp);
+	fflush(b->fp);
+
 	lprintf(LL_DEBUG, "Opened file %s to a buffer", filename);
 	read_b = 0;
 
-	bc = b->chk_start;
-	while (1)
+	buf_clear(b);
+
+	bc = buf_chunk_new(b, f_sz + 1);
+	buf_chunk_add(b, bc);
+
+	r = read(fileno(b->fp), bc->buf, bc->size);
+	if (r < 0)
 	{
-		r = read(fileno(b->fp), bc->buf, (sizeof(bc->buf) - 1));
-		if (r < 0)
-		{
-			lprintf(LL_ERROR, "Failed to read file: %s", filename);
+		lprintf(LL_ERROR, "Failed to read file: %s", filename);
 
-			return r;
+		return r;
 
-		}
-		else if (r == (sizeof(bc->buf) - 1))
-		{
-			bc = buf_chunk_new(b);
-			buf_chunk_add(b, bc);
-		}
-		else if(r == 0)
-			break;
-		
-		read_b += r;
+	}
+	else if (r != f_sz)
+	{
+
+		lprintf(LL_ERROR, "Read incorrect size from file: %s", filename);
+
+		return -1;
 	}
 
+	for (i = 0; i < bc->size; i++)
+	{
+		if (bc->buf[i] == '\n' || bc->buf[i] == '\r')
+			b->eolcount++;
+	}
 
+	if (b->li_count < b->eolcount)
+	{
+		lprintf(LL_DEBUG, "Current lineinfo amount not enough (%d), allocating %d new li's.", b->li_count, b->eolcount - b->li_count);
+		buf_li_add(b, (b->eolcount - b->li_count));
+
+	}
+	else
+		lprintf(LL_DEBUG, "No need to allocate new lineinfo for %d lines", b->eolcount);
+
+
+	return 0;
 	l_len = 0;
+	i = 0;
+	c = bc->buf[i];
+	c_line = 0;
 
-	bc = b->chk_start;
-	while (bc)
+	while (c)
 	{
-		i = 0;
-		c = bc->buf[i];
-		if (i == 0 && c != '\0' && bc == b->chk_start)
-			b->linecount++;
+		if (l_len == 0)
+			b->l_info[c_line].p = &bc->buf[i];
 
-		while (c)
+		l_len++;
+
+		if (c == '\n' || c == '\r')
 		{
-			if (l_len == 0)
-				b->l_info[b->linecount - 1].p = &bc->buf[i];
-
-			l_len++;
-
-			if (c == '\n' || c == '\r')
-			{
-				b->l_info[b->linecount - 1].n = l_len;
-				l_len = 0;
-				b->linecount++;
-				
-				if (b->linecount >= b->li_count * LI_CHUNK_SZ)
-					buf_add_li_chunks(b, 1);
-			}
-
-			if (c == '\0')
-				break;
-
-			c = bc->buf[++i];
-			b->tot_len++;
+			lprintf(LL_DEBUG, "line break at line %d", c_line + 1);
+			b->l_info[c_line].n = l_len;
+			l_len = 0;
+			c_line++;
 		}
 
-		bc = bc->next;
+		if (c == '\0')
+			break;
+
+		c = bc->buf[++i];
+		b->tot_len++;
 	}
 
-	lprintf(LL_DEBUG, "Buffer line count: %d", b->linecount);
+	lprintf(LL_DEBUG, "Buffer line count: %d", b->eolcount);
 	lprintf(LL_DEBUG, "%d bytes read from the file: %s", read_b, filename);
 
 	return read_b;
@@ -280,17 +326,10 @@ void buf_dump_lineinfo(Buffer_t *b)
 
 	i = 0;
 
-/*	for (i = 0; i < 128; i++)
+	for (i = 0; i < b->eolcount; i++)
 	{
 		l = &b->l_info[i];
 		lprintf(LL_DEBUG, "l_len:%d", l->n);
-	}
-*/
-	while (l->n > 0)
-	{
-		lprintf(LL_DEBUG, "l_len:%d", l->n);
-
-		l = &b->l_info[++i];
 	}
 }
 
@@ -359,7 +398,7 @@ int buf_add_ch(Buffer_t *b, char c)
 	{
 		lprintf(LL_DEBUG, "Buffer not big enough, allocating a new chunk", b->tot_sz);
 
-		bc = buf_chunk_new(b);
+		bc = buf_chunk_new(b, BCHUNK_SZ);
 		buf_chunk_add(b, bc);
 	}
 
@@ -384,7 +423,7 @@ int buf_add_ch(Buffer_t *b, char c)
 
 	if (c == '\r' || c == '\n' || b->tot_len == 0)
 	{
-		b->linecount++;
+		b->eolcount++;
 		if (c == '\r' || c == '\n')
 			b->c_line++;
 	}
@@ -403,21 +442,26 @@ int buf_add_ch(Buffer_t *b, char c)
 
 int buf_clear(Buffer_t *b)
 {
-	BChunk_t *bc;
+	BChunk_t *bc, *tmp;
 
-	bc = b->chk_start->next;
-
+	bc = b->chk_start;
 	while (bc)
 	{
+		tmp = bc->next;
 		buf_chunk_free(b, bc);
-		bc = b->chk_start->next;
+		bc = tmp;
 	}
 
-	memset(b->chk_start->buf, 0, sizeof(b->chk_start->buf));
+	free(b->l_info);
+
+	b->l_info = calloc(LI_CHUNK_SZ, sizeof(LineInfo_t));
+	b->li_count = LI_CHUNK_SZ;
 
 	b->c_pos = 0;
-	b->linecount = 0;
-	b->tot_sz = BCHUNK_SZ;
+	b->eolcount = 0;
+	b->tot_sz = 0;
+	b->c_line = 0;
+	b->chk_start = NULL;
 
 	return 0;
 }

@@ -127,7 +127,7 @@ int cmdlib_cursor_down_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
-	if (ctx->c_buffer->c_line >= ctx->c_buffer->linecount - 1)
+	if (ctx->c_buffer->c_line >= ctx->c_buffer->eolcount)
 		return 0;
 
 	ctx->c_buffer->c_line++;
