@@ -201,6 +201,8 @@ void ncs_addstrf(Screen_t *s, int x, int y, const char *fmt, ...)
 
 	mvwprintw(s->wd, y, x, "%s", buffer);
 
+	ncs_cursor_revert(s);
+
 	wrefresh(s->wd);
 }
 

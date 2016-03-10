@@ -15,6 +15,7 @@ sources = \
 	screen.c \
 	buffer.c \
 	cmdlib.c \
+	memory_tracer.c \
 	log.c \
 
 OBJS = $(sources:%.c=$(obj_dir)%.o)

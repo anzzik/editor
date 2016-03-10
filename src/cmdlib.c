@@ -115,6 +115,10 @@ int cmdlib_cursor_up_cb(void *uptr, char *args)
 		free(buffer);
 	}
 
+	ncs_clr_line(ctx->scr, ctx->scr->h - 1);
+	ncs_addstrf(ctx->scr, 0, ctx->scr->h - 1, 
+			"Line: %d, len: %d", ctx->c_buffer->c_line + 1, ctx->c_buffer->l_info[ctx->c_buffer->c_line].n);
+
 	return 0;
 }
 
@@ -127,7 +131,7 @@ int cmdlib_cursor_down_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
-	if (ctx->c_buffer->c_line >= ctx->c_buffer->eolcount)
+	if (ctx->c_buffer->c_line >= ctx->c_buffer->eolcount - 1)
 		return 0;
 
 	ctx->c_buffer->c_line++;
@@ -152,9 +156,15 @@ int cmdlib_cursor_down_cb(void *uptr, char *args)
 		ncs_clr_line(ctx->scr, ctx->scr->h - 1);
 		ncs_clr_line(ctx->scr, ctx->scr->h - 2);
 
+
 		free(buffer);
 	}
 
+	ncs_clr_line(ctx->scr, ctx->scr->h - 1);
+	ncs_addstrf(ctx->scr, 0, ctx->scr->h - 1, 
+			"Line: %d, len: %d, eolcount: %d", 
+			ctx->c_buffer->c_line + 1, ctx->c_buffer->l_info[ctx->c_buffer->c_line].n,
+			ctx->c_buffer->eolcount);
 
 	return 0;
 }

@@ -72,7 +72,7 @@ int buf_li_add(Buffer_t *b, int n)
 	BChunk_t *bc;
 
 	bc = b->chk_start;
-	lprintf(LL_DEBUG, "before li_add: %d", strlen(bc->buf));
+
 	li = realloc(b->l_info, (b->li_count + n) * sizeof(LineInfo_t));
 	if (li == NULL)
 	{
@@ -80,15 +80,21 @@ int buf_li_add(Buffer_t *b, int n)
 		return -1;
 	}
 
+	if (li != b->l_info)
+	{
+		lprintf(LL_DEBUG, "realloc returned a different pointer (%p <> %p)", li, b->l_info);
+	}
+
+	b->l_info = li;
+
 	for (i = b->li_count; i < b->li_count + n; i++)
 	{
-		b->l_info[i].p = NULL;
 		b->l_info[i].n = 0;
+		b->l_info[i].p = NULL;
+	//	memset(&b->l_info[i], '\0', sizeof(LineInfo_t));
 	}
 
 	b->li_count += n;
-
-	lprintf(LL_DEBUG, "Allocated space for %d new lineinfos!", n);
 
 	return 0;
 }
@@ -284,8 +290,6 @@ int buf_load_file(Buffer_t *b, const char *filename)
 	else
 		lprintf(LL_DEBUG, "No need to allocate new lineinfo for %d lines", b->eolcount);
 
-
-	return 0;
 	l_len = 0;
 	i = 0;
 	c = bc->buf[i];
@@ -300,7 +304,6 @@ int buf_load_file(Buffer_t *b, const char *filename)
 
 		if (c == '\n' || c == '\r')
 		{
-			lprintf(LL_DEBUG, "line break at line %d", c_line + 1);
 			b->l_info[c_line].n = l_len;
 			l_len = 0;
 			c_line++;
