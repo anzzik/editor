@@ -131,12 +131,19 @@ int cmdlib_cursor_down_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
-	if (ctx->c_buffer->c_line >= ctx->c_buffer->eolcount - 1)
+	if (ctx->c_buffer->c_line + 1 >= ctx->c_buffer->eolcount)
 		return 0;
+
+	if (ctx->c_buffer->c_line + 1 > ctx->c_buffer->li_count)
+	{
+		lprintf(LL_ERROR, "Not enough lineinfo allocated!");
+		return -1;
+	}
 
 	ctx->c_buffer->c_line++;
 
 	l = &ctx->c_buffer->l_info[ctx->c_buffer->c_line];
+
 	if (l->n < ctx->scr->r_x)
 		ncs_set_cursor(ctx->scr, l->n, ctx->scr->r_y);
 
@@ -176,7 +183,20 @@ int cmdlib_cursor_left_cb(void *uptr, char *args)
 
 	ctx = uptr;
 
-	c = ncs_get_ch(ctx->scr, ctx->scr->r_x + 1, ctx->scr->r_y);
+	if (!ctx->c_buffer->l_info)
+		return 0;
+
+	c = buf_get_char(ctx->c_buffer, ctx->c_buffer->c_line, ctx->c_buffer->c_col);
+	if (ctx->c_buffer->c_col > 0)
+	{
+		if (c == '\t')
+			ncs_cursor_lf(ctx->scr, 8);
+		else
+			ncs_cursor_lf(ctx->scr, 1);
+
+
+		ctx->c_buffer->c_col--;
+	}
 
 	return 0;
 }
@@ -191,15 +211,17 @@ int cmdlib_cursor_right_cb(void *uptr, char *args)
 	if (!ctx->c_buffer->l_info)
 		return 0;
 
-	c = ncs_get_ch(ctx->scr, ctx->scr->r_x , ctx->scr->r_y);
-	if (ctx->scr->r_x < ctx->c_buffer->l_info[ctx->c_buffer->c_line].n)
-	{
-		lprintf(LL_DEBUG, "char: %d", (int)c);
+	c = buf_get_char(ctx->c_buffer, ctx->c_buffer->c_line, ctx->c_buffer->c_col);
 
+	//if (ctx->scr->r_x < ctx->c_buffer->l_info[ctx->c_buffer->c_line].n - 1)
+	if (c != '\n' && c != '\r' && c != '\0')
+	{
 		if (c == '\t')
 			ncs_cursor_rt(ctx->scr, 8);
 		else
 			ncs_cursor_rt(ctx->scr, 1);
+
+		ctx->c_buffer->c_col++;
 	}
 
 	return 0;
@@ -214,7 +236,6 @@ int cmdlib_cmd_line_cb(void *uptr, char *args)
 	ncs_set_cursor(ctx->scr, 0, ctx->scr->h - 1);
 	ncs_addch(ctx->scr, ':');
 	buf_add_ch(ctx->cmd_buffer, ':');
-	ncs_cursor_rt(ctx->scr, 1);
 
 	ed_set_mode(ctx, ED_CMD_MODE);
 

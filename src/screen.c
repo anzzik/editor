@@ -186,7 +186,12 @@ void ncs_addch_xy(Screen_t *s, char c, int x, int y)
 
 void ncs_addch(Screen_t *s, char c)
 {
+	ncs_xy(s, &s->r_x, &s->r_y);
+
 	mvwaddch(s->wd, s->r_y, s->r_x, c);
+
+	ncs_xy(s, &s->r_x, &s->r_y);
+
 	wrefresh(s->wd);
 }
 

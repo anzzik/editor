@@ -43,6 +43,7 @@ struct Buffer_s
 	FILE	   *fp;
 	int	    c_pos;
 	int	    c_line;
+	int	    c_col;
 	int	    eolcount;
 	int	    li_count;
 	size_t      tot_sz;
@@ -56,9 +57,9 @@ struct Buffer_s
 Buffer_t *buf_new(char *filename);
 BChunk_t *buf_chunk_new(Buffer_t *b, size_t size);
 int	  buf_li_add(Buffer_t *b, int n);
-int 	  buf_add_li_chunks(Buffer_t *b, int n);
 int	  buf_chunk_add(Buffer_t *b, BChunk_t *bc);
 void	  buf_chunk_free(Buffer_t* b, BChunk_t *bc);
+char	  buf_get_char(Buffer_t *b, int line, int col);
 char	 *buf_get_content(Buffer_t *b);
 void	  buf_free(Buffer_t *b);
 int	  buf_load_file(Buffer_t *b, const char *filename);

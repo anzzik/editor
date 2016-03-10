@@ -24,7 +24,7 @@
 #include "buffer.h"
 #include "log.h"
 
-#define LI_CHUNK_SZ 10
+#define LI_CHUNK_SZ 2 
 
 Buffer_t *buf_new(char *filename)
 {
@@ -34,6 +34,7 @@ Buffer_t *buf_new(char *filename)
 	b->filename = filename;
 	b->c_pos = 0;
 	b->c_line = 0;
+	b->c_col = 0;
 	b->eolcount = 0;
 	b->chk_start = NULL;
 	b->fp = NULL;
@@ -69,9 +70,6 @@ int buf_li_add(Buffer_t *b, int n)
 {
 	LineInfo_t *li;
 	int i;
-	BChunk_t *bc;
-
-	bc = b->chk_start;
 
 	li = realloc(b->l_info, (b->li_count + n) * sizeof(LineInfo_t));
 	if (li == NULL)
@@ -96,27 +94,28 @@ int buf_li_add(Buffer_t *b, int n)
 
 	b->li_count += n;
 
+	lprintf(LL_CRITICAL, "LineInfo allocation successful");
+
 	return 0;
 }
 
-int buf_add_li_chunks(Buffer_t *b, int n)
+char buf_get_char(Buffer_t *b, int line, int col)
 {
-	LineInfo_t *li;
+	char *p;
 
-	lprintf(LL_DEBUG, "Starting to add chunks");
-	li = realloc(b->l_info, (b->li_count + (n * LI_CHUNK_SZ)) * sizeof(LineInfo_t));
+	if (line > b->eolcount)
+		return '\0';
 
-	if (li == NULL)
-	{
-		lprintf(LL_CRITICAL, "realloc failed to expand the mem area");
-		return -1;
-	}
-	
-	b->li_count += (n * LI_CHUNK_SZ);
-	b->l_info = li;
-	lprintf(LL_DEBUG, "%d chunks added successfully", n);
+	if (line > b->li_count)
+		return '\0';
 
-	return 0;
+	if (col > b->l_info[line].n)
+		return '\0';
+
+
+	p = b->l_info[line].p;
+
+	return *(p + col);
 }
 
 char *buf_get_content(Buffer_t *b)
@@ -214,7 +213,7 @@ void buf_free(Buffer_t *b)
 
 int buf_load_file(Buffer_t *b, const char *filename)
 {
-	int	   r, i, read_b, l_len, c_line;
+	int	   r, i, l_len, c_line;
 	char	   c;
 	size_t	   f_sz;
 	BChunk_t  *bc;
@@ -252,7 +251,6 @@ int buf_load_file(Buffer_t *b, const char *filename)
 	fflush(b->fp);
 
 	lprintf(LL_DEBUG, "Opened file %s to a buffer", filename);
-	read_b = 0;
 
 	buf_clear(b);
 
@@ -317,9 +315,9 @@ int buf_load_file(Buffer_t *b, const char *filename)
 	}
 
 	lprintf(LL_DEBUG, "Buffer line count: %d", b->eolcount);
-	lprintf(LL_DEBUG, "%d bytes read from the file: %s", read_b, filename);
+	lprintf(LL_DEBUG, "%d bytes read from the file: %s", r, filename);
 
-	return read_b;
+	return r;
 }
 
 void buf_dump_lineinfo(Buffer_t *b)
@@ -329,7 +327,7 @@ void buf_dump_lineinfo(Buffer_t *b)
 
 	i = 0;
 
-	for (i = 0; i < b->eolcount; i++)
+	for (i = 0; i < b->li_count; i++)
 	{
 		l = &b->l_info[i];
 		lprintf(LL_DEBUG, "l_len:%d", l->n);
@@ -395,7 +393,6 @@ int buf_add_ch(Buffer_t *b, char c)
 	BChunk_t *bc;
 	int n;
 	int offset;
-	int chunk_n;
 	
 	if (b->c_pos >= b->tot_sz)
 	{
@@ -405,18 +402,15 @@ int buf_add_ch(Buffer_t *b, char c)
 		buf_chunk_add(b, bc);
 	}
 
-	offset = b->c_pos;
-	n = BCHUNK_SZ;
-	chunk_n = 1;
-
 	bc = b->chk_start;
+	n = bc->size;
+	offset = b->c_pos;
+
 	while (b->c_pos > (n - 1))
 	{
 		bc = bc->next;
-		n += BCHUNK_SZ;
-		offset -= BCHUNK_SZ;
-
-		chunk_n++;
+		n += bc->size;
+		offset -= bc->size;
 	}
 
 	if (b->l_info[b->c_line].n == 0)
@@ -426,9 +420,15 @@ int buf_add_ch(Buffer_t *b, char c)
 
 	if (c == '\r' || c == '\n' || b->tot_len == 0)
 	{
-		b->eolcount++;
+
 		if (c == '\r' || c == '\n')
+		{
 			b->c_line++;
+			b->eolcount++;
+
+			if (b->c_line > b->li_count - 1)
+				buf_li_add(b, LI_CHUNK_SZ);
+		}
 	}
 
 	bc->buf[offset] = c;
