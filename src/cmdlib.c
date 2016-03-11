@@ -105,17 +105,17 @@ int cmdlib_cursor_up_cb(void *uptr, char *args)
 		snprintf(buffer, l->n, "%s", l->p);
 		buffer[l->n] = '\0';
 
+		ncs_clr_line(ctx->scr, ctx->scr->h - 1);
+		ncs_clr_line(ctx->scr, ctx->scr->h - 2);
 
 		ncs_scroll(ctx->scr, scrl);
 		ncs_addstrf(ctx->scr, 0, 0, "%s", buffer);
-
-		ncs_clr_line(ctx->scr, ctx->scr->h - 1);
-		ncs_clr_line(ctx->scr, ctx->scr->h - 2);
 
 		free(buffer);
 	}
 
 	ncs_clr_line(ctx->scr, ctx->scr->h - 1);
+	ncs_clr_line(ctx->scr, ctx->scr->h - 2);
 	ncs_addstrf(ctx->scr, 0, ctx->scr->h - 1, 
 			"Line: %d, len: %d", ctx->c_buffer->c_line + 1, ctx->c_buffer->l_info[ctx->c_buffer->c_line].n);
 
@@ -157,12 +157,11 @@ int cmdlib_cursor_down_cb(void *uptr, char *args)
 		snprintf(buffer, n, "%s", p);
 		buffer[n] = '\0';
 
-		ncs_scroll(ctx->scr, scrl);
-		ncs_addstrf(ctx->scr, 0, ctx->scr->h - 3, "%s", buffer);
-
 		ncs_clr_line(ctx->scr, ctx->scr->h - 1);
 		ncs_clr_line(ctx->scr, ctx->scr->h - 2);
 
+		ncs_scroll(ctx->scr, scrl);
+		ncs_addstrf(ctx->scr, 0, ctx->scr->h - 3, "%s", buffer);
 
 		free(buffer);
 	}
