@@ -1,0 +1,3 @@
+[submodule "src/ncurses-screen"]
+	path = src/ncurses-screen
+	url = https://github.com/anzzik/ncurses-screen.git
